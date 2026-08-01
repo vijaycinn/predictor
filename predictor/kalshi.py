@@ -148,18 +148,20 @@ def place_order(ticker: str, side: str, count: float, price: float, reduce_only:
     (fixed-point dollars, strings). count in contracts (string).
     """
     import uuid
+    # Kalshi tick size is 1c for these markets; off-tick prices are rejected
+    price_tick = round(price * 100) / 100.0
     body = {
         "ticker": ticker,
         "client_order_id": str(uuid.uuid4()),
         "side": "bid" if side == "YES" else "ask",
         "count": f"{count:.2f}",
-        "price": f"{price:.4f}",
+        "price": f"{price_tick:.4f}",
         "time_in_force": "good_till_canceled",
         "self_trade_prevention_type": "taker_at_cross",
         "post_only": False,
         "reduce_only": reduce_only,
     }
-    return _auth_request("POST", "/portfolio/orders", json_body=body)
+    return _auth_request("POST", "/portfolio/events/orders", json_body=body)
 
 
 def get_orders(status: str | None = None, ticker: str | None = None, limit: int = 200) -> list[dict]:
