@@ -1,5 +1,14 @@
 # Predictor — prediction market trading agent config
-venue: polymarket
+venue: polymarket          # polymarket | kalshi (data + paper trading)
+kalshi:
+  base_url: https://external-api.kalshi.com/trade-api/v2
+  # credentials come from env: KALSHI_API_KEY (key ID) + KALSHI_PRIVATE_KEY (RSA PEM)
+  scan:
+    # Kalshi volumes ~10x smaller than Polymarket; relax gates
+    min_volume_usd: 2000
+    min_24h_volume: 300
+    min_liquidity: 100
+
 mode: paper                # paper | live (live requires POLYMARKET_PRIVATE_KEY + wallet)
 
 scan:

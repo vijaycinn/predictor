@@ -8,6 +8,14 @@ import yaml
 
 DEFAULTS: dict = {
     "venue": "polymarket",
+    "kalshi": {
+        "base_url": "https://external-api.kalshi.com/trade-api/v2",
+        "scan": {
+            "min_volume_usd": 2000,
+            "min_24h_volume": 300,
+            "min_liquidity": 100,
+        },
+    },
     "mode": "paper",
     "scan": {
         "max_markets": 40,

@@ -7,6 +7,14 @@ import time
 from . import db, executor as executor_mod, features as features_mod, ingest, learn, risk as risk_mod, signals as sig_mod
 
 
+def get_venue(cfg: dict):
+    """Venue ingest module: ingest (Polymarket) or kalshi, same function surface."""
+    if cfg.get("venue") == "kalshi":
+        from . import kalshi
+        return kalshi
+    return ingest
+
+
 def run_scan(conn, cfg: dict, llm_overrides: dict | None = None, verbose: bool = False) -> dict:
     """llm_overrides: {condition_id: prob_yes} from optional LLM review pass."""
     llm_overrides = llm_overrides or {}
@@ -17,9 +25,10 @@ def run_scan(conn, cfg: dict, llm_overrides: dict | None = None, verbose: bool =
     resolved = learn.check_resolutions(conn)
 
     # 2. discover candidate markets
-    markets = ingest.discover_markets(cfg)
+    ing = get_venue(cfg)
+    markets = ing.discover_markets(cfg)
     if verbose:
-        print(f"[scan] discovered {len(markets)} candidate markets")
+        print(f"[scan] venue={cfg.get('venue', 'polymarket')} discovered {len(markets)} candidate markets")
 
     exec_mod_inst = executor_mod.make_executor(conn, cfg)
     signals = []
@@ -33,11 +42,11 @@ def run_scan(conn, cfg: dict, llm_overrides: dict | None = None, verbose: bool =
         token_yes = market["clob_token_ids"][0] if market.get("clob_token_ids") else ""
 
         try:
-            book = ingest.fetch_orderbook(token_yes)
-            history = ingest.fetch_price_history(cid, interval="1w", fidelity=168)
-            trades = ingest.fetch_recent_trades(cid, limit=25)
-            oi = ingest.fetch_open_interest(cid)
-        except ingest.IngestError as e:
+            book = ing.fetch_orderbook(token_yes)
+            history = ing.fetch_price_history(cid, interval="1w", fidelity=168)
+            trades = ing.fetch_recent_trades(cid, limit=25)
+            oi = ing.fetch_open_interest(cid)
+        except Exception as e:
             skipped.append((cid, str(e)))
             continue
 

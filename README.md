@@ -46,6 +46,27 @@ EV_net = EV_raw - fee - slippage
 Gate:   EV_net >= ev_min_net (0.02) AND |edge| >= min_edge (0.03)
 ```
 
+## Venues
+
+- `venue: polymarket` (default) — gamma/CLOB/data APIs, token-id based
+- `venue: kalshi` — `external-api.kalshi.com`, ticker-based, prices in dollars
+  (0.74 = 74%). Orderbook returns yes/no bids only; asks derived (yes bid X =
+  no ask 1-X). MVE combo markets excluded via `mve_filter=exclude`.
+- Kalshi scan gates live under `kalshi.scan` (volumes ~10x smaller than Polymarket)
+- Override per run: `python3 cli.py scan --venue kalshi`
+
+### Kalshi credentials (env)
+
+| Var | Value |
+|-----|-------|
+| `KALSHI_API_KEY` | API key ID (UUID) from Kalshi → Account & security → API Keys |
+| `KALSHI_PRIVATE_KEY` | RSA private key PEM (downloaded `.key` file content) |
+
+Auth = RSA-PSS/SHA256 over `timestamp + METHOD + path` (no query), sent as
+`KALSHI-ACCESS-KEY` / `KALSHI-ACCESS-SIGNATURE` / `KALSHI-ACCESS-TIMESTAMP`.
+Public market data works keyless; credentials unlock portfolio/orders (live path).
+`python3 cli.py scan --venue kalshi` prints auth readiness to stderr.
+
 ## Usage
 
 ```bash

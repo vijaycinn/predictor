@@ -19,12 +19,17 @@ DEFAULT_CFG = str(Path(__file__).parent / "config.yaml")
 
 def cmd_scan(args):
     cfg = load_config(args.config)
+    if args.venue:
+        cfg["venue"] = args.venue
     conn = db.connect(args.db)
     llm_overrides = {}
     if args.llm_overrides:
         llm_overrides = json.loads(Path(args.llm_overrides).read_text())
     from predictor.scanner import run_scan
     result = run_scan(conn, cfg, llm_overrides=llm_overrides, verbose=args.verbose)
+    if cfg["venue"] == "kalshi":
+        from predictor import kalshi
+        print("kalshi auth:", kalshi.auth_ready(), file=sys.stderr)
     if args.shortlist:
         Path(args.shortlist).write_text(json.dumps(result["shortlist"], indent=2, default=str))
         print(f"shortlist written: {args.shortlist} ({len(result['shortlist'])} candidates)")
@@ -68,6 +73,7 @@ def main():
     p_scan = sub.add_parser("scan", help="run one full scan cycle")
     p_scan.add_argument("--llm-overrides", default=None, help="path to JSON {condition_id: prob_yes}")
     p_scan.add_argument("--shortlist", default=None, help="write LLM review shortlist JSON to this path")
+    p_scan.add_argument("--venue", default=None, choices=["polymarket", "kalshi"], help="override venue from config")
     p_scan.add_argument("--verbose", action="store_true")
     p_scan.set_defaults(func=cmd_scan)
 
