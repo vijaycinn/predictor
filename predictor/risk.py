@@ -7,6 +7,21 @@ import time
 from . import db
 
 
+class MarginTradingError(Exception):
+    """Raised if margin trading is ever enabled. NON-NEGOTIABLE: never borrow,
+    never lever, never touch perps/futures/margin endpoints."""
+
+
+def assert_no_margin(cfg: dict) -> None:
+    """Hard guard: NO MARGIN TRADING EVER. Config cannot enable it — raising
+    here is the only behavior if the flag is ever set true."""
+    if cfg.get("risk", {}).get("margin_trading", False):
+        raise MarginTradingError(
+            "margin_trading must remain false. NO MARGIN TRADING EVER — "
+            "all orders are fully cash-collateralized event contracts only."
+        )
+
+
 def check_filters(features: dict, sig: dict, cfg: dict) -> tuple[bool, str]:
     """Return (pass, reason_if_blocked)."""
     exec_cfg = cfg.get("execution", {})
@@ -74,9 +89,10 @@ def capital_available(cfg: dict, positions: list[dict]) -> float:
     return capital - used
 
 
-def check_risk_limits(conn, sig: dict, size_frac: float, cfg: dict) -> tuple[bool, str]:
+def check_risk_limits(conn, sig: dict, size_dollars: float, cfg: dict) -> tuple[bool, str]:
     risk = cfg.get("risk", {})
     capital = risk.get("capital_usd", 1000)
+    max_trade = risk.get("max_trade_usd", 2.0)
     max_notional = risk.get("max_notional_frac", 0.60) * capital
     max_daily_loss = risk.get("max_daily_loss_usd", 50)
     max_concurrent = risk.get("max_concurrent_positions", 12)
@@ -98,8 +114,9 @@ def check_risk_limits(conn, sig: dict, size_frac: float, cfg: dict) -> tuple[boo
     if len(positions) >= max_concurrent:
         return False, f"position count {len(positions)} >= max {max_concurrent}"
 
-    price = sig.get("market_price") or 0.5
-    notional = price * size_frac * capital
+    notional = size_dollars
+    if notional > max_trade:
+        return False, f"notional {notional:.2f} > max_trade_usd {max_trade:.2f}"
     if notional > max_notional:
         return False, f"notional {notional:.2f} > max {max_notional:.2f}"
 
@@ -119,21 +136,23 @@ def check_risk_limits(conn, sig: dict, size_frac: float, cfg: dict) -> tuple[boo
 
 
 def limit_price(sig: dict, features: dict, cfg: dict) -> float:
-    """Pick limit price: maker-friendly by default, nudge inside book by aggressiveness."""
+    """Pick limit price: maker-friendly by default, nudge inside book by aggressiveness.
+    NO side trades at 1 - YES book (Kalshi/Polymarket binary equivalence)."""
     ev_calc = sig.get("ev_calc", {})
     side = sig.get("side")
     mid = features.get("mid") or ev_calc.get("price_side")
     exec_cfg = cfg.get("execution", {})
     prefer_maker = exec_cfg.get("prefer_maker", True)
-    agg = exec_cfg.get("aggressiveness", 0.5)
 
     if side == "YES":
         best_ask = features.get("best_ask")
         if prefer_maker and best_ask is not None:
             return round(min(mid + (best_ask - mid) * 0.5, best_ask), 3)
         return round(best_ask if best_ask is not None else mid, 3)
-    else:  # NO
+    else:  # NO — buy NO, so price = 1 - YES book
         best_bid = features.get("best_bid")
-        if prefer_maker and best_bid is not None:
-            return round(max(mid - (mid - best_bid) * 0.5, best_bid), 3)
-        return round(best_bid if best_bid is not None else mid, 3)
+        no_ask = (1.0 - best_bid) if best_bid is not None else None
+        no_mid = 1.0 - mid
+        if prefer_maker and no_ask is not None:
+            return round(min(no_mid + (no_ask - no_mid) * 0.5, no_ask), 3)
+        return round(no_ask if no_ask is not None else no_mid, 3)

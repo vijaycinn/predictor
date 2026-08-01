@@ -51,6 +51,45 @@ def cmd_status(args):
     print("Performance:", json.dumps(perf, indent=2))
 
 
+def cmd_proposals(args):
+    conn = db.connect(args.db)
+    cfg = load_config(args.config)
+    db.expire_stale_proposals(conn, cfg.get("approval", {}).get("ttl_hours", 2.0))
+    pending = db.pending_proposals(conn)
+    if not pending:
+        print("No pending proposals.")
+        return
+    for p in pending:
+        print(
+            f"#{p['id']:>3} {p['side']:>3} x{p['size']:.0f} @ {p['limit_price']:.3f} "
+            f"(${p['price_side'] * p['size']:.2f}) ev={p['ev_net']:.4f} conf={p['confidence']:.2f} | {p['question'][:55]}"
+        )
+
+
+def cmd_approve(args):
+    conn = db.connect(args.db)
+    cfg = load_config(args.config)
+    if args.venue:
+        cfg["venue"] = args.venue
+    from predictor.scanner import execute_proposal
+    for pid in args.ids:
+        res = execute_proposal(conn, cfg, pid, verbose=False)
+        print(json.dumps(res, indent=2, default=str))
+
+
+def cmd_reject(args):
+    conn = db.connect(args.db)
+    for pid in args.ids:
+        p = db.get_proposal(conn, pid)
+        if p is None:
+            print(f"#{pid}: not found")
+        elif p["status"] != "PENDING":
+            print(f"#{pid}: status={p['status']} (not PENDING)")
+        else:
+            db.set_proposal_status(conn, pid, "REJECTED", note="rejected by user")
+            print(f"#{pid}: rejected")
+
+
 def cmd_calibrate(args):
     conn = db.connect(args.db)
     cfg = load_config(args.config)
@@ -79,6 +118,18 @@ def main():
 
     p_status = sub.add_parser("status", help="positions + performance")
     p_status.set_defaults(func=cmd_status)
+
+    p_prop = sub.add_parser("proposals", help="list pending trade proposals awaiting approval")
+    p_prop.set_defaults(func=cmd_proposals)
+
+    p_ap = sub.add_parser("approve", help="approve + execute proposals (re-verifies EV first)")
+    p_ap.add_argument("ids", nargs="+", type=int, help="proposal IDs")
+    p_ap.add_argument("--venue", default=None, choices=["polymarket", "kalshi"])
+    p_ap.set_defaults(func=cmd_approve)
+
+    p_rj = sub.add_parser("reject", help="reject proposals")
+    p_rj.add_argument("ids", nargs="+", type=int, help="proposal IDs")
+    p_rj.set_defaults(func=cmd_reject)
 
     p_cal = sub.add_parser("calibrate", help="calibration report")
     p_cal.set_defaults(func=cmd_calibrate)

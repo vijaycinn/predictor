@@ -41,6 +41,8 @@ DEFAULTS: dict = {
     },
     "risk": {
         "capital_usd": 1000,
+        "max_trade_usd": 2.0,
+        "margin_trading": False,
         "max_per_trade_frac": 0.20,
         "max_notional_frac": 0.60,
         "max_daily_loss_usd": 50,
@@ -67,6 +69,11 @@ DEFAULTS: dict = {
     "learn": {
         "calibration_buckets": 10,
         "min_samples_per_bucket": 5,
+    },
+    "approval": {
+        "required": True,
+        "ttl_hours": 2,
+        "recheck_on_approve": True,
     },
 }
 

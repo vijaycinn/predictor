@@ -35,6 +35,8 @@ execution:
 
 risk:
   capital_usd: 1000
+  max_trade_usd: 2.0        # HARD CAP: no single trade > $2 notional (VJ, Aug-2026)
+  margin_trading: false     # NO MARGIN TRADING EVER — code asserts this stays false
   max_per_trade_frac: 0.20
   max_notional_frac: 0.60
   max_daily_loss_usd: 50
@@ -61,3 +63,8 @@ prob:
 learn:
   calibration_buckets: 10    # decile buckets for calibration report
   min_samples_per_bucket: 5
+
+approval:
+  required: true             # HARD GATE: every buy needs explicit user approval
+  ttl_hours: 2               # proposals expire after this; rescan regenerates
+  recheck_on_approve: true   # re-verify EV/liquidity before executing approved trade

@@ -17,17 +17,21 @@ class PaperExecutor:
 
     def execute(self, sig: dict, size: float, limit: float, features: dict) -> dict:
         side = sig["side"]
+        best_ask = None
+        no_ask = None
         if side == "YES":
             best_ask = features.get("best_ask")
             ask_depth = features.get("ask_depth", 0.0)
             crossed = best_ask is not None and limit >= best_ask
         else:
+            # NO: equivalent price = 1 - YES book; NO ask = 1 - best YES bid
             best_bid = features.get("best_bid")
             bid_depth = features.get("bid_depth", 0.0)
-            crossed = best_bid is not None and limit <= best_bid
+            no_ask = (1.0 - best_bid) if best_bid is not None else None
+            crossed = no_ask is not None and limit >= no_ask
 
         if crossed:
-            fill_price = best_ask if side == "YES" else best_bid
+            fill_price = best_ask if side == "YES" else no_ask
             depth = ask_depth if side == "YES" else bid_depth
             fill_size = min(size, max(depth, 0.0))
             status = "OPEN" if fill_size >= size else "PARTIAL"
@@ -61,19 +65,34 @@ class PaperExecutor:
 
 
 class LiveExecutor:
-    """Live execution via py-clob-client. Requires POLYMARKET_PRIVATE_KEY + wallet env.
-    Not installed/configured by default — paper mode is the safe default."""
+    """Live execution via py-clob-client (Polymarket) / signed Kalshi orders.
+    Requires POLYMARKET_PRIVATE_KEY or KALSHI_API_KEY+KALSHI_PRIVATE_KEY env.
+    NOT wired for placing orders yet — paper mode is the safe default.
+
+    HARD RULES:
+    - NO MARGIN TRADING EVER. Only fully cash-collateralized binary event
+      contracts. Never place margin/leveraged orders, never touch perps/futures.
+    - Every order sized <= risk.max_trade_usd (currently $2) by the scanner.
+    """
 
     def __init__(self, conn, cfg: dict):
-        key = os.environ.get("POLYMARKET_PRIVATE_KEY")
-        if not key:
-            raise RuntimeError(
-                "LiveExecutor requires POLYMARKET_PRIVATE_KEY env var. "
-                "Stay in paper mode until configured."
-            )
+        from .risk import MarginTradingError, assert_no_margin
+        assert_no_margin(cfg)  # duplicate guard: config cannot enable margin
+        venue = cfg.get("venue", "polymarket")
+        if venue == "kalshi":
+            from . import kalshi
+            if not kalshi.auth_ready()["KALSHI_API_KEY"] or not kalshi.auth_ready()["KALSHI_PRIVATE_KEY"]:
+                raise RuntimeError("LiveExecutor (kalshi) requires KALSHI_API_KEY + KALSHI_PRIVATE_KEY env vars.")
+        else:
+            key = os.environ.get("POLYMARKET_PRIVATE_KEY")
+            if not key:
+                raise RuntimeError(
+                    "LiveExecutor requires POLYMARKET_PRIVATE_KEY env var. "
+                    "Stay in paper mode until configured."
+                )
         self.conn = conn
         self.cfg = cfg
-        # TODO: init py_clob_client here once wallet funded
+        # TODO: init exchange client here once wallet funded
 
     def execute(self, sig: dict, size: float, limit: float, features: dict) -> dict:
         raise NotImplementedError("Live execution not yet wired. Paper mode only.")

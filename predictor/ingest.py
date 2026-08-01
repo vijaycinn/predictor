@@ -204,3 +204,18 @@ def fetch_open_interest(condition_id: str) -> float:
         return _to_float(d.get("numShares") if isinstance(d, dict) else d)
     except (requests.RequestException, AttributeError):
         return 0.0
+
+
+def fetch_market_by_id(condition_id: str) -> dict:
+    """Single market by condition_id via gamma (fresh record for approval re-check).
+
+    NOTE: gamma filter param is condition_ids (plural); singular is silently
+    ignored and returns the default top-volume list — wrong market risk.
+    """
+    markets = get_json(f"{GAMMA}/markets", {"condition_ids": condition_id})
+    if not markets:
+        raise IngestError(f"gamma market not found: {condition_id}")
+    m = normalize_market(markets[0])
+    if m["condition_id"] != condition_id:
+        raise IngestError(f"gamma returned wrong market {m['condition_id']} for {condition_id}")
+    return m

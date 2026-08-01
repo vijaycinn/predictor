@@ -316,3 +316,16 @@ def fetch_open_interest(ticker: str) -> float:
         return _to_float(((d or {}).get("market") or {}).get("open_interest_fp"))
     except Exception:
         return 0.0
+
+
+def fetch_market_by_id(ticker: str) -> dict:
+    """Fresh single market record (approval re-check path)."""
+    d = get_json(f"/markets/{ticker}")
+    m = (d or {}).get("market") or {}
+    nm = normalize_market(m)
+    try:
+        ev = get_json(f"/events/{m.get('event_ticker')}")
+        nm["category"] = _canonical_category(((ev or {}).get("event") or {}).get("category"))
+    except Exception:
+        pass
+    return nm

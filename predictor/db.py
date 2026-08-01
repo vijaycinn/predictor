@@ -94,6 +94,27 @@ CREATE TABLE IF NOT EXISTS blocked_trades (
     detail TEXT
 );
 
+CREATE TABLE IF NOT EXISTS proposals (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    condition_id TEXT,
+    question TEXT,
+    side TEXT,
+    size REAL,
+    limit_price REAL,
+    price_side REAL,
+    ev_net REAL,
+    confidence REAL,
+    prob_yes REAL,
+    created_at REAL,
+    status TEXT DEFAULT 'PENDING',
+    decided_at REAL,
+    executed_trade_id INTEGER,
+    note TEXT,
+    llm_override REAL
+);
+
+CREATE INDEX IF NOT EXISTS idx_prop_status ON proposals(status, created_at);
+
 CREATE INDEX IF NOT EXISTS idx_snap_cond ON orderbook_snapshots(condition_id, ts);
 CREATE INDEX IF NOT EXISTS idx_sig_cond ON signals(condition_id, ts);
 CREATE INDEX IF NOT EXISTS idx_sig_action ON signals(action);
@@ -106,6 +127,11 @@ def connect(db_path: str | Path) -> sqlite3.Connection:
     conn = sqlite3.connect(str(db_path))
     conn.row_factory = sqlite3.Row
     conn.executescript(SCHEMA)
+    # backward-compat column adds for older DBs
+    try:
+        conn.execute("ALTER TABLE proposals ADD COLUMN llm_override REAL")
+    except sqlite3.OperationalError:
+        pass
     conn.commit()
     return conn
 
@@ -244,3 +270,50 @@ def get_trade_pnl(conn, condition_id: str, result_yes: int) -> float:
         )
     conn.commit()
     return total
+
+
+def insert_proposal(conn, p: dict) -> int:
+    cur = conn.execute(
+        """INSERT INTO proposals (condition_id, question, side, size, limit_price,
+           price_side, ev_net, confidence, prob_yes, created_at, status, note, llm_override)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+        (
+            p["condition_id"], p.get("question"), p["side"], p.get("size"),
+            p.get("limit_price"), p.get("price_side"), p.get("ev_net"),
+            p.get("confidence"), p.get("prob_yes"), p.get("created_at", time.time()),
+            p.get("status", "PENDING"), p.get("note", ""), p.get("llm_override"),
+        ),
+    )
+    conn.commit()
+    return cur.lastrowid
+
+
+def get_proposal(conn, pid: int) -> dict | None:
+    r = conn.execute("SELECT * FROM proposals WHERE id=?", (pid,)).fetchone()
+    return dict(r) if r else None
+
+
+def pending_proposals(conn) -> list[dict]:
+    rows = conn.execute(
+        "SELECT * FROM proposals WHERE status='PENDING' ORDER BY created_at ASC"
+    ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def set_proposal_status(conn, pid: int, status: str, note: str = "", trade_id: int | None = None) -> None:
+    conn.execute(
+        """UPDATE proposals SET status=?, decided_at=?, note=?, executed_trade_id=COALESCE(?, executed_trade_id)
+           WHERE id=?""",
+        (status, time.time(), note, trade_id, pid),
+    )
+    conn.commit()
+
+
+def expire_stale_proposals(conn, ttl_hours: float = 2.0) -> int:
+    cutoff = time.time() - ttl_hours * 3600
+    cur = conn.execute(
+        "UPDATE proposals SET status='EXPIRED', decided_at=? WHERE status='PENDING' AND created_at < ?",
+        (time.time(), cutoff),
+    )
+    conn.commit()
+    return cur.rowcount
