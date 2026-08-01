@@ -1,164 +1,114 @@
 # predictor — AI-driven prediction market trading & research agent
 
-Polymarket (venue: binary markets) trading agent. Deterministic signal engine +
-optional LLM overlay. Paper trading by default; live path stubbed.
+Trading agent for **Polymarket** + **Kalshi** binary prediction markets.
+Deterministic signal engine with optional LLM research overlay. Paper trading
+by default (unrestricted thesis lab); live mode code-complete with all guardrails.
 
-## Architecture
+## Features
 
-```
-discover (gamma /events, per-category) -> ingest (CLOB book, price history, data API trades/OI)
-  -> features (price/orderbook/sentiment/time vectors)
-  -> signal (calibrated prob blend + confidence + fee-aware EV)
-  -> filters -> Kelly sizing -> risk limits -> paper/live executor
-  -> SQLite (markets, snapshots, features, signals, trades, outcomes, blocked)
-  -> learn (resolution tracking, calibration report, bias by category)
-```
-
-- `predictor/ingest.py` — Polymarket public APIs (read-only, no auth)
-- `predictor/features.py` — feature vector construction (documented in DB)
-- `predictor/signals.py` — probability blend, confidence tiers, EV math
-- `predictor/risk.py` — mechanical filters, Kelly sizing, exposure limits
-- `predictor/executor.py` — PaperExecutor (deterministic fills), LiveExecutor stub
-- `predictor/learn.py` — outcome resolution, calibration/Brier, category bias
-- `predictor/scanner.py` — one full scan cycle
-- `cli.py` — scan | status | calibrate | resolve
-
-## Probability blend
-
-```
-P(YES) = w_market*price + w_book*book_adj + w_momentum*momentum_adj
-       + w_base*base_rate + w_sentiment*flow_adj + [w_llm*llm_override]
-```
-
-Market price stays dominant (efficient baseline). LLM weight only activates when
-an override exists (`--llm-overrides`); otherwise redistributed to market price.
-All component values logged per signal for transparency/backtest.
-
-## EV math (per share)
-
-```
-EV_raw = P(side) - price(side)
-fees:   Polymarket formula  fee = shares x feeRate x p x (1-p), feeRate in bps
-        (gamma fields makerBaseFee/takerBaseFee are bps; 1000 = 10%)
-        fallback: config fees.*_per_share when market has no fee schedule
-slippage: maker=0 (rest at limit), taker=half_spread x aggressiveness
-EV_net = EV_raw - fee - slippage
-Gate:   EV_net >= ev_min_net (0.02) AND |edge| >= min_edge (0.03)
-```
-
-## Venues
-
-- `venue: polymarket` (default) — gamma/CLOB/data APIs, token-id based
-- `venue: kalshi` — `external-api.kalshi.com`, ticker-based, prices in dollars
-  (0.74 = 74%). Orderbook returns yes/no bids only; asks derived (yes bid X =
-  no ask 1-X). MVE combo markets excluded via `mve_filter=exclude`.
-- Kalshi scan gates live under `kalshi.scan` (volumes ~10x smaller than Polymarket)
-- Override per run: `python3 cli.py scan --venue kalshi`
-
-### Kalshi credentials (env)
-
-| Var | Value |
-|-----|-------|
-| `KALSHI_API_KEY` | API key ID (UUID) from Kalshi → Account & security → API Keys |
-| `KALSHI_PRIVATE_KEY` | RSA private key PEM (downloaded `.key` file content) |
-
-Auth = RSA-PSS/SHA256 over `timestamp + METHOD + path` (no query), sent as
-`KALSHI-ACCESS-KEY` / `KALSHI-ACCESS-SIGNATURE` / `KALSHI-ACCESS-TIMESTAMP`.
-Public market data works keyless; credentials unlock portfolio/orders (live path).
-`python3 cli.py scan --venue kalshi` prints auth readiness to stderr.
+- **Dual venue**: Polymarket (gamma/CLOB/data APIs) and Kalshi (external-api,
+  RSA-PSS signed auth, internal wallet — no gas needed)
+- **Feature engine**: price, orderbook imbalance/depth, momentum, trade flow,
+  time-to-expiry — every vector logged per decision
+- **Calibrated probability blend**: market price (efficient baseline) + book
+  + momentum + base rate + flow + optional LLM override (only counts when
+  research supports ≥5c divergence)
+- **Fee-aware EV**: Polymarket fee formula `rate × p × (1-p)` (bps), Kalshi
+  zero-fee; slippage modeled per order style
+- **Order lifecycle**: GTC limit orders → reconcile each scan (fill on limit
+  cross, cancel after TTL) → resolution/manual close
+- **Learning loop**: outcome tracking, calibration reliability table, Brier
+  score, per-category bias
+- **Cron-ready**: agent-driven scans with LLM research overlay, dual venue
 
 ## Mode semantics
 
-- **paper (default)** — unrestricted thesis lab. No $2 cap, no approval gate,
-  no portfolio hard limits. Trades execute autonomously on Kelly-sized virtual
-  capital ($1000). Purpose: validate hypotheses, gather calibration data.
-- **live** — all rules bite: `max_trade_usd` ($2), per-buy approval, portfolio
-  limits (daily loss, exposure, concurrency). Not wired for execution yet.
-- **NO MARGIN TRADING EVER applies in both modes** — code raises
-  `MarginTradingError` if the flag is ever set true (scanner + executor double
-  guard). Only fully cash-collateralized binary event contracts.
+| Mode | Purpose | Rules |
+|---|---|---|
+| `paper` (default) | Thesis validation | No caps, no approval, autonomous execution, Kelly-sized virtual $1000 |
+| `live` | Real money | $2/trade cap, per-buy user approval, portfolio limits (daily loss, exposure, concurrency) |
 
-### Live approval flow (not active until mode: live)
+**NO MARGIN TRADING EVER** — both modes, code-enforced (`MarginTradingError`).
+**NO STOP-LOSS** — high-risk/high-reward events ride to resolution or manual close.
+
+## Install
 
 ```bash
-python3 cli.py proposals        # list pending
-python3 cli.py approve 1 2      # approve + execute (re-verifies EV first)
-python3 cli.py reject 3         # reject
+pip install -r requirements.txt
+cp config.yaml config.local.yaml   # adjust venue/gates/risk as needed
 ```
-Proposals expire after `approval.ttl_hours` (2h). `recheck_on_approve` re-fetches
-the book and recomputes EV at execution time — fails closed if edge faded.
-
-## Order lifecycle
-
-Every buy becomes a GTC limit order (maker-preferred):
-
-```
-BUY -> RESTING (limit not crossed) | OPEN (crossed)
-  RESTING -> reconcile pass each scan:
-      market comes to limit  -> FILLED (OPEN, fill at limit/better)
-      order_ttl_hours (4h)   -> CANCELED
-  OPEN -> closed at resolution (auto P&L) or `cli.py close <trade_id>`
-```
-
-- `python3 cli.py orders` — lifecycle view (resting/open, req/fill sizes, exchange order id)
-- `python3 cli.py close <trade_id>` — manual exit: paper closes at book,
-  live Kalshi places reduce_only sell
-- `python3 cli.py cancel <trade_id>` — cancel resting (live: cancels on exchange too)
-- Live mode reconciles against Kalshi's real order book each scan (GET
-  /portfolio/orders, fills, positions)
-
-**NO STOP-LOSS** (per VJ): prediction markets are high-risk/high-reward events;
-positions ride to resolution or manual close. `execution.stop_loss: false`.
-
-## Live trading (Kalshi wired, not active)
-
-- `mode: live` + `venue: kalshi` — real GTC orders via signed API, $2/trade cap
-  + approval gate + portfolio limits all active. Kalshi wallet is internal
-  (no external wallet/gas needed); balance $61.61.
-- Polymarket live still requires POLYMARKET_PRIVATE_KEY + gas wallet (stub).
-- Order placement is code-complete but NOT fired — requires explicit go.
 
 ## Usage
 
 ```bash
-python3 cli.py scan                          # full cycle, no LLM overlay
-python3 cli.py scan --shortlist /tmp/sl.json # emit LLM review candidates
-python3 cli.py scan --llm-overrides /tmp/ov.json  # apply researched estimates
+python3 cli.py scan                          # full cycle, paper (autonomous)
+python3 cli.py scan --venue kalshi           # Kalshi pool
+python3 cli.py scan --llm-overrides ov.json  # apply researched LLM estimates
 python3 cli.py status                        # positions + P&L
+python3 cli.py orders                        # order lifecycle view
+python3 cli.py close <trade_id>              # manual exit (live: reduce_only sell)
+python3 cli.py cancel <trade_id>             # cancel resting order
 python3 cli.py calibrate                     # reliability table, Brier, category bias
 python3 cli.py resolve                       # settle closed markets
 ```
 
-Override file shape: `{"<condition_id>": 0.12, ...}`.
+LLM override file: `{"<condition_id>": 0.12, ...}`. For Kalshi, condition_id is
+the market ticker (`KX...`); for Polymarket it's the `0x` condition id.
 
-## Cron (agent-driven loop)
+## Credentials (env)
 
-Hermes cron job runs every 2h (CT work hours):
-1. `scan --shortlist` — get candidate markets with real liquidity
-2. Agent researches top candidates (web), forms independent P(YES) per market
-3. Writes overrides JSON only where evidence supports >= 5c divergence
-4. `scan --llm-overrides` — trades fire on fee-aware EV
-5. Deliver brief: top ideas, paper positions, risk state
+| Var | Venue | Purpose |
+|---|---|---|
+| `KALSHI_API_KEY` | Kalshi | API key ID (Account & security → API Keys) |
+| `KALSHI_PRIVATE_KEY` | Kalshi | RSA PEM (downloaded `.key` content) |
+| `POLYMARKET_PRIVATE_KEY` | Polymarket | Live wallet (not yet wired — needs gas) |
 
-See cron job "predictor-scan" for the live prompt.
+Public market data works keyless on both venues. Credentials only unlock live
+trading/portfolio reads.
 
-## Live trading (NOT enabled)
+## Live trading
 
-- `mode: live` in config.yaml + `POLYMARKET_PRIVATE_KEY` env
-- LiveExecutor stub — requires py-clob-client wiring (EIP-712 orders)
-- Do NOT enable until paper track record validates calibration
+- **Kalshi**: fully wired (signed GTC orders, `bid`=YES / `ask`=NO, reduce_only
+  closes, reconcile vs real exchange). Internal wallet — no external wallet/gas.
+- **Polymarket**: requires wallet key + gas wiring (stub).
+- Activation: `mode: live` + `venue: kalshi` in config. All live rules engage
+  ($2/trade, approval per buy via `proposals`/`approve`/`reject`, portfolio limits).
 
-## Learning loop
+## Architecture
 
-- Every scan: resolution check settles closed markets, marks trade P&L
-- `calibrate` — decile reliability table + Brier score + per-category bias
-- Signals store prob_yes, confidence, EV, features at decision time for backtest
-- Parameter changes: propose in config, never silent
+```
+discover (per-category, volume-gated)
+  -> ingest (orderbook, price history, trades, OI)
+  -> features (price/orderbook/sentiment/time vectors)
+  -> signal (calibrated prob blend + confidence tier + fee-aware EV)
+  -> filters -> Kelly sizing -> [proposal gate (live)] -> executor
+  -> SQLite (markets, snapshots, features, signals, proposals, trades, outcomes)
+  -> learn (resolution, calibration, bias) -> reconcile (order lifecycle)
+```
+
+- `predictor/ingest.py` — Polymarket public APIs
+- `predictor/kalshi.py` — Kalshi data + signed auth + order ops
+- `predictor/features.py` — feature vectors (documented in DB)
+- `predictor/signals.py` — probability blend, confidence, EV math
+- `predictor/risk.py` — filters, Kelly sizing, hard limits (live)
+- `predictor/executor.py` — paper/live executors, order lifecycle reconcile
+- `predictor/scanner.py` — scan orchestration + approval-gated execution
+- `predictor/learn.py` — resolution, calibration, performance
 
 ## Known limitations
 
-- Paper fills: RESTING maker orders never re-checked for later fills
-- No order cancellation/exit management yet (lifecycle hooks TODO)
-- Sentiment = market-internal proxies (flow, imbalance, momentum); external
-  social feeds (LunarCrush) pluggable later
-- LLM overlay runs in cron agent loop, not inside the package
+- Polymarket live un-wired (needs wallet + gas)
+- External sentiment feeds (LunarCrush) — pluggable, needs key
+- Backtest replay harness — signals logged, replay not built
+- Paper fills model is deterministic (no stochastic partial-fill simulation)
+
+## Safety
+
+- No margin ever (code-enforced)
+- Live orders capped at $2 until you raise `risk.max_trade_usd`
+- Every live buy requires explicit approval (2h expiry, EV re-check at execution)
+- Fail-closed: approval re-check rejects if edge faded or book moved
+
+## License
+
+MIT
