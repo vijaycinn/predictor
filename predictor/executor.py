@@ -18,6 +18,16 @@ def _order_ttl(cfg: dict) -> float:
     return min(cfg.get("execution", {}).get("order_ttl_hours", 24.0), 24.0) * 3600
 
 
+def _event_aware_ttl(cfg: dict, features: dict) -> float:
+    """TTL respecting event life: min(24h cap, 0.8 * hours_to_expiry) so at
+    least 20% of the event's remaining time survives the order (VJ rule)."""
+    base = _order_ttl(cfg)
+    hte = float(features.get("hours_to_expiry") or 0)
+    if hte > 0:
+        return min(base, 0.8 * hte * 3600)
+    return base
+
+
 class PaperExecutor:
     """Deterministic paper fills. BUY at limit: fills at limit if limit >= ask
     (crossed), partial by depth; otherwise rests unfilled (maker)."""
@@ -67,7 +77,7 @@ class PaperExecutor:
             "slippage": slippage,
             "status": status,
             "order_status": "LIVE" if status == "RESTING" else "FILLED",
-            "ttl_expires_at": time.time() + _order_ttl(self.cfg),
+            "ttl_expires_at": time.time() + _event_aware_ttl(self.cfg, features),
             "created_at": time.time(),
         }
         trade["id"] = db.insert_trade(self.conn, trade)
@@ -106,7 +116,8 @@ class LiveExecutor:
         """Place real GTC limit order on Kalshi. Returns local trade record."""
         from .risk import MarginTradingError  # noqa: F401 (margin guard already asserted)
         ticker = sig["condition_id"]
-        resp = self.kalshi.place_order(ticker, sig["side"], size, limit)
+        hours_to_expiry = float(features.get("hours_to_expiry") or 0)
+        resp = self.kalshi.place_order(ticker, sig["side"], size, limit, hours_to_expiry=hours_to_expiry)
         order = resp.get("order") or resp
         order_id = order.get("order_id") or resp.get("order_id")
         if not order_id:
@@ -137,7 +148,7 @@ class LiveExecutor:
             "status": status,
             "order_status": order_status,
             "exchange_order_id": order_id,
-            "ttl_expires_at": time.time() + _order_ttl(self.cfg),
+            "ttl_expires_at": time.time() + _event_aware_ttl(self.cfg, features),
             "created_at": time.time(),
         }
         trade["id"] = db.insert_trade(self.conn, trade)

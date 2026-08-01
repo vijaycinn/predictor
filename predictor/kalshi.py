@@ -142,17 +142,25 @@ def _auth_request(method: str, path: str, json_body: dict | None = None, retries
 
 
 def place_order(ticker: str, side: str, count: float, price: float, reduce_only: bool = False,
-                max_lifetime_hours: float = 24.0) -> dict:
+                hours_to_expiry: float = 0.0, max_lifetime_hours: float = 24.0) -> dict:
     """Place a GTC limit order. side: 'YES' -> bid, 'NO' -> ask.
     V2 endpoint: POST /portfolio/events/orders (legacy /portfolio/orders
     deprecated 2026-05-06). Prices are fixed-point dollar strings.
-    Order expires after max_lifetime_hours (VJ rule: max 24h, never longer).
+
+    Order lifetime (VJ rules):
+      - max 24h absolute cap, never longer
+      - leave >= 20% of the event's remaining time: lifetime <= 0.8 * hours_to_expiry
+        (critical for short-timed events — a 24h order on a 5h event is invalid)
+      - unknown event time -> default 24h cap
     """
     import uuid
-    import time as _time
     from datetime import datetime, timezone
     # Kalshi tick size is 1c for these markets; off-tick prices are rejected
     price_tick = round(price * 100) / 100.0
+    lifetime_h = max_lifetime_hours
+    if hours_to_expiry and hours_to_expiry > 0:
+        # at least 20% of the event's remaining time must survive the order
+        lifetime_h = min(lifetime_h, 0.8 * hours_to_expiry)
     body = {
         "ticker": ticker,
         "client_order_id": str(uuid.uuid4()),
@@ -160,7 +168,7 @@ def place_order(ticker: str, side: str, count: float, price: float, reduce_only:
         "count": f"{count:.2f}",
         "price": f"{price_tick:.4f}",
         "time_in_force": "good_till_canceled",
-        "expiration_time": (datetime.now(timezone.utc).timestamp() + max_lifetime_hours * 3600) * 1000,
+        "expiration_time": int(datetime.now(timezone.utc).timestamp() + lifetime_h * 3600),
         "self_trade_prevention_type": "taker_at_cross",
         "post_only": False,
         "reduce_only": reduce_only,
