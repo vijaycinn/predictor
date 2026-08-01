@@ -197,6 +197,38 @@ def cmd_cancel(args):
         print(f"#{tid}: cancelled")
 
 
+def cmd_arb(args):
+    """Predexon-driven arb check: Kalshi candidates vs Polymarket equivalents."""
+    from predictor import arb, predexon
+    if args.health:
+        print("predexon health:", predexon.health())
+        return
+    cfg = load_config(args.config)
+    if args.min_volume:
+        cfg["scan"] = {**cfg.get("scan", {}), "min_volume_usd": args.min_volume}
+    if args.check:
+        res = arb.arb_check(cfg, min_volume=args.min_volume, limit=args.limit)
+        print(f"Kalshi scanned: {res['kalshi_scanned']} | matched: {res['with_match']} (weak dropped: {res.get('weak_dropped', 0)}) | positive-net: {len(res['positive'])}")
+        for o in res["positive"]:
+            print()
+            print(arb.format_opportunity(o))
+        if not res["positive"]:
+            print("\nNo positive-net arb opportunities after fees/slippage.")
+            # fall back to top mispriced Kalshi markets (non-arb)
+            print("\n--- Top mispriced Kalshi candidates (non-arb, labeled) ---")
+            for k in predexon.list_kalshi_markets(status="open", min_volume=args.min_volume, limit=8):
+                kp = arb.kalshi_prices(k)
+                if kp:
+                    mid = ((kp["yes_bid"] or 0) + (kp["yes_ask"] or 0)) / 2
+                    print(f"  {k['ticker'][:38]:40} YES {mid:.3f} | {k.get('title','')[:50]}")
+    else:
+        res = arb.best_kalshi_trades(cfg, min_volume=args.min_volume, limit=args.limit)
+        print(f"Kalshi scanned: {res['kalshi_scanned']} | matched: {res['with_match']} | opportunities: {len(res['opportunities'])}")
+        for o in res["opportunities"][:5]:
+            print()
+            print(arb.format_opportunity(o))
+
+
 def cmd_calibrate(args):
     conn = db.connect(args.db)
     cfg = load_config(args.config)
@@ -250,6 +282,13 @@ def main():
     p_cx.add_argument("ids", nargs="+", type=int, help="trade IDs")
     p_cx.add_argument("--venue", default=None, choices=["polymarket", "kalshi"])
     p_cx.set_defaults(func=cmd_cancel)
+
+    p_arb = sub.add_parser("arb", help="Predexon arb check: Kalshi vs Polymarket equivalents")
+    p_arb.add_argument("--check", action="store_true", help="positive-net only + mispriced fallback")
+    p_arb.add_argument("--health", action="store_true", help="Predexon API health check")
+    p_arb.add_argument("--min-volume", type=int, default=5000, help="min Kalshi dollar volume")
+    p_arb.add_argument("--limit", type=int, default=30, help="max Kalshi markets scanned")
+    p_arb.set_defaults(func=cmd_arb)
 
     p_cal = sub.add_parser("calibrate", help="calibration report")
     p_cal.set_defaults(func=cmd_calibrate)
