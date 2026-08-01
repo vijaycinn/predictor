@@ -9,7 +9,7 @@ kalshi:
     min_24h_volume: 300
     min_liquidity: 100
 
-mode: paper                # paper | live (live requires POLYMARKET_PRIVATE_KEY + wallet)
+mode: paper                # paper | live — LIVE requires venue=kalshi (Kalshi API keys in env, internal wallet)
 
 scan:
   max_markets: 40          # markets evaluated per scan
