@@ -39,6 +39,7 @@ risk:
   capital_usd: 1000
   max_trade_usd: 2.0        # LIVE ONLY: hard cap per trade. Paper has NO limits (thesis validation).
   margin_trading: false     # NO MARGIN TRADING EVER — code asserts this stays false (all modes)
+  max_open_positions: 5     # cap on concurrent open positions (both modes; adjustable)
   max_per_trade_frac: 0.20
   max_notional_frac: 0.60
   max_daily_loss_usd: 50

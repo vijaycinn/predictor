@@ -45,6 +45,7 @@ DEFAULTS: dict = {
         "capital_usd": 1000,
         "max_trade_usd": 2.0,
         "margin_trading": False,
+        "max_open_positions": 5,
         "max_per_trade_frac": 0.20,
         "max_notional_frac": 0.60,
         "max_daily_loss_usd": 50,

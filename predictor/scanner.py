@@ -89,6 +89,15 @@ def _size_trade(sig: dict, cfg: dict) -> tuple[float, float]:
     return size_dollars, size_contracts
 
 
+def check_position_cap(conn, cfg: dict) -> tuple[bool, str]:
+    """Max concurrent open positions (both modes). VJ: default 5, adjustable."""
+    cap = cfg.get("risk", {}).get("max_open_positions", 5)
+    open_count = len(db.open_positions(conn))
+    if open_count >= cap:
+        return False, f"max_open_positions reached ({open_count}/{cap})"
+    return True, ""
+
+
 def run_scan(conn, cfg: dict, llm_overrides: dict | None = None, verbose: bool = False) -> dict:
     """llm_overrides: {condition_id: prob_yes} from optional LLM review pass."""
     risk_mod.assert_no_margin(cfg)  # NO MARGIN TRADING EVER (all modes)
@@ -174,6 +183,13 @@ def run_scan(conn, cfg: dict, llm_overrides: dict | None = None, verbose: bool =
         if not ok2:
             db.block_trade(conn, cid, sig.get("side") or "?", reason2, "")
             skipped.append((cid, reason2))
+            continue
+
+        # position cap (both modes)
+        ok3, reason3 = check_position_cap(conn, cfg)
+        if not ok3:
+            db.block_trade(conn, cid, sig.get("side") or "?", reason3, "")
+            skipped.append((cid, reason3))
             continue
 
         limit = risk_mod.limit_price(sig, feats, cfg)
