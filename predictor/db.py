@@ -75,7 +75,12 @@ CREATE TABLE IF NOT EXISTS trades (
     status TEXT,
     created_at REAL,
     resolved INTEGER DEFAULT 0,
-    pnl REAL
+    pnl REAL,
+    exchange_order_id TEXT,
+    order_status TEXT,
+    requested_size REAL,
+    filled_size REAL,
+    ttl_expires_at REAL
 );
 
 CREATE TABLE IF NOT EXISTS outcomes (
@@ -128,10 +133,17 @@ def connect(db_path: str | Path) -> sqlite3.Connection:
     conn.row_factory = sqlite3.Row
     conn.executescript(SCHEMA)
     # backward-compat column adds for older DBs
-    try:
-        conn.execute("ALTER TABLE proposals ADD COLUMN llm_override REAL")
-    except sqlite3.OperationalError:
-        pass
+    for col in ("llm_override",):
+        try:
+            conn.execute(f"ALTER TABLE proposals ADD COLUMN {col} REAL")
+        except sqlite3.OperationalError:
+            pass
+    for col in ("exchange_order_id TEXT", "order_status TEXT", "requested_size REAL",
+                "filled_size REAL", "ttl_expires_at REAL"):
+        try:
+            conn.execute(f"ALTER TABLE trades ADD COLUMN {col}")
+        except sqlite3.OperationalError:
+            pass
     conn.commit()
     return conn
 
@@ -208,17 +220,33 @@ def insert_signal(conn, sig: dict) -> int:
 def insert_trade(conn, trade: dict) -> int:
     cur = conn.execute(
         """INSERT INTO trades (signal_id, condition_id, side, action, size, limit_price,
-           fill_price, slippage, status, created_at)
-           VALUES (?,?,?,?,?,?,?,?,?,?)""",
+           fill_price, slippage, status, created_at, exchange_order_id, order_status,
+           requested_size, filled_size, ttl_expires_at)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
         (
             trade.get("signal_id"), trade["condition_id"], trade["side"],
             trade.get("action", "BUY"), trade.get("size"), trade.get("limit_price"),
             trade.get("fill_price"), trade.get("slippage"), trade.get("status"),
-            trade.get("created_at", time.time()),
+            trade.get("created_at", time.time()), trade.get("exchange_order_id"),
+            trade.get("order_status"), trade.get("requested_size"), trade.get("filled_size"),
+            trade.get("ttl_expires_at"),
         ),
     )
     conn.commit()
     return cur.lastrowid
+
+
+def update_trade(conn, trade_id: int, fields: dict) -> None:
+    sets = ", ".join(f"{k}=?" for k in fields)
+    conn.execute(f"UPDATE trades SET {sets} WHERE id=?", (*fields.values(), trade_id))
+    conn.commit()
+
+
+def resting_orders(conn) -> list[dict]:
+    rows = conn.execute(
+        "SELECT * FROM trades WHERE status='RESTING' ORDER BY created_at ASC"
+    ).fetchall()
+    return [dict(r) for r in rows]
 
 
 def block_trade(conn, condition_id: str, side: str, reason: str, detail: str = "") -> None:
@@ -227,7 +255,6 @@ def block_trade(conn, condition_id: str, side: str, reason: str, detail: str = "
         (time.time(), condition_id, side, reason, detail),
     )
     conn.commit()
-
 
 def set_market_resolved(conn, condition_id: str, result_yes: int, final_price: float) -> None:
     conn.execute(

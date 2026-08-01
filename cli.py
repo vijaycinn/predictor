@@ -90,6 +90,113 @@ def cmd_reject(args):
             print(f"#{pid}: rejected")
 
 
+def cmd_orders(args):
+    conn = db.connect(args.db)
+    rows = conn.execute(
+        """SELECT t.id, t.condition_id, m.question, t.side, t.status, t.requested_size,
+                  t.filled_size, t.limit_price, t.fill_price, t.exchange_order_id,
+                  t.order_status, t.ttl_expires_at
+           FROM trades t LEFT JOIN markets m ON m.condition_id=t.condition_id
+           WHERE t.status IN ('RESTING','OPEN','PARTIAL') ORDER BY t.id"""
+    ).fetchall()
+    if not rows:
+        print("No open/resting orders.")
+        return
+    for r in rows:
+        print(
+            f"#{r['id']:>3} {r['status']:8} {r['side']:>3} req={r['requested_size'] or 0:.0f} "
+            f"fill={r['filled_size'] or 0:.0f} @ {r['limit_price'] or r['fill_price']} "
+            f"ord={r['order_status'] or '-'} | {str(r['question'])[:42]}"
+        )
+
+
+def _infer_venue(condition_id: str) -> str:
+    """Kalshi tickers look like KX...; Polymarket condition ids are 0x hex."""
+    return "polymarket" if str(condition_id).startswith("0x") else "kalshi"
+
+
+def cmd_close(args):
+    """Manual position exit. Paper: closes at current book mid (sell side).
+    Live kalshi: places reduce_only sell order. NO stop-loss (by design)."""
+    conn = db.connect(args.db)
+    cfg = load_config(args.config)
+    if args.venue:
+        cfg["venue"] = args.venue
+    from predictor.scanner import get_venue
+    for tid in args.ids:
+        t = conn.execute("SELECT * FROM trades WHERE id=?", (tid,)).fetchone()
+        if not t:
+            print(f"#{tid}: not found")
+            continue
+        cfg["venue"] = args.venue or _infer_venue(t["condition_id"])
+        ing = get_venue(cfg)
+        if t["status"] != "OPEN":
+            print(f"#{tid}: status={t['status']} (only OPEN positions can close)")
+            continue
+        try:
+            book = ing.fetch_orderbook(t["condition_id"])
+        except Exception as e:
+            print(f"#{tid}: book fetch failed: {e}")
+            continue
+        side = t["side"]
+        if side == "YES":
+            exit_px = book.get("best_bid")
+        else:
+            exit_px = (1.0 - book.get("best_ask")) if book.get("best_ask") is not None else None
+        if exit_px is None:
+            print(f"#{tid}: no exit price in book")
+            continue
+        entry = t["fill_price"] or t["limit_price"]
+        if entry is None:
+            print(f"#{tid}: no entry price on record")
+            continue
+        size = t["size"] or 0
+        pnl = (exit_px - entry) * size
+        if cfg.get("mode") == "live":
+            from predictor.executor import make_executor
+            ex = make_executor(conn, cfg)
+            ks = getattr(ex, "kalshi", None)
+            if ks is None:
+                print(f"#{tid}: live close needs kalshi executor")
+                continue
+            resp = ks.place_order(t["condition_id"], side, size, exit_px, reduce_only=True)
+            print(f"#{tid}: live sell order placed (reduce_only) at {exit_px}: {resp}")
+        db.update_trade(conn, tid, {"status": "CLOSED", "fill_price": exit_px, "pnl": pnl,
+                                    "order_status": "closed_manual"})
+        print(f"#{tid}: closed {side} x{size:.0f} entry={entry:.4f} exit={exit_px:.4f} pnl=${pnl:.2f}")
+
+
+def cmd_cancel(args):
+    """Cancel a resting order (live: also cancels on exchange)."""
+    conn = db.connect(args.db)
+    cfg = load_config(args.config)
+    if args.venue:
+        cfg["venue"] = args.venue
+    for tid in args.ids:
+        t = conn.execute("SELECT * FROM trades WHERE id=?", (tid,)).fetchone()
+        if not t:
+            print(f"#{tid}: not found")
+            continue
+        cfg["venue"] = args.venue or _infer_venue(t["condition_id"])
+        if t["status"] != "RESTING":
+            print(f"#{tid}: status={t['status']} (only RESTING orders can cancel)")
+            continue
+        if cfg.get("mode") == "live" and t["exchange_order_id"]:
+            from predictor.executor import make_executor
+            try:
+                ex = make_executor(conn, cfg)
+                cancel_fn = getattr(ex, "cancel", None)
+                if cancel_fn is None:
+                    raise RuntimeError("live cancel not available")
+                cancel_fn(tid)
+                print(f"#{tid}: cancelled on exchange + locally")
+                continue
+            except Exception as e:
+                print(f"#{tid}: exchange cancel failed: {e}")
+        db.update_trade(conn, tid, {"status": "CANCELED", "order_status": "canceled_manual"})
+        print(f"#{tid}: cancelled")
+
+
 def cmd_calibrate(args):
     conn = db.connect(args.db)
     cfg = load_config(args.config)
@@ -130,6 +237,19 @@ def main():
     p_rj = sub.add_parser("reject", help="reject proposals")
     p_rj.add_argument("ids", nargs="+", type=int, help="proposal IDs")
     p_rj.set_defaults(func=cmd_reject)
+
+    p_ord = sub.add_parser("orders", help="list open/resting orders (lifecycle view)")
+    p_ord.set_defaults(func=cmd_orders)
+
+    p_cl = sub.add_parser("close", help="close an open position (paper: at book; live: reduce_only sell)")
+    p_cl.add_argument("ids", nargs="+", type=int, help="trade IDs")
+    p_cl.add_argument("--venue", default=None, choices=["polymarket", "kalshi"])
+    p_cl.set_defaults(func=cmd_close)
+
+    p_cx = sub.add_parser("cancel", help="cancel a resting order (live: also on exchange)")
+    p_cx.add_argument("ids", nargs="+", type=int, help="trade IDs")
+    p_cx.add_argument("--venue", default=None, choices=["polymarket", "kalshi"])
+    p_cx.set_defaults(func=cmd_cancel)
 
     p_cal = sub.add_parser("calibrate", help="calibration report")
     p_cal.set_defaults(func=cmd_calibrate)

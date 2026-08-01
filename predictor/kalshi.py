@@ -97,22 +97,102 @@ def auth_headers(method: str, path: str) -> dict:
     }
 
 
-def get_json(path: str, params: dict | None = None, auth: bool = False, retries: int = 3) -> Any:
-    headers = auth_headers("GET", path) if auth else {}
+def get_json(path: str, params: dict | None = None, auth: bool = False, retries: int = 5) -> Any:
+    # Kalshi requires signing the FULL path from API root incl /trade-api/v2
+    sign_path = f"/trade-api/v2{path}" if auth and not path.startswith("/trade-api") else path
+    headers = auth_headers("GET", sign_path) if auth else {}
     last_err = None
     for attempt in range(retries):
         try:
             r = requests.get(f"{BASE}{path}", params=params, headers=headers, timeout=TIMEOUT)
-            if r.status_code == 401:
-                raise KalshiAuthError("Kalshi auth rejected (401). Check KALSHI_API_KEY / KALSHI_PRIVATE_KEY.")
-            if r.status_code in (429, 500, 502, 503):
+            if r.status_code in (401, 429, 500, 502, 503):
+                # Kalshi edge intermittently rejects valid signatures in bursts;
+                # retry with backoff before declaring auth failure.
                 raise requests.RequestException(f"HTTP {r.status_code}")
             r.raise_for_status()
             return r.json()
         except requests.RequestException as e:
             last_err = e
-            time.sleep(1.0 * (2 ** attempt))
+            time.sleep(1.5 * (2 ** attempt))
+    if isinstance(last_err, requests.RequestException) and "401" in str(last_err):
+        raise KalshiAuthError("Kalshi auth rejected (401) after retries. Check KALSHI_API_KEY / KALSHI_PRIVATE_KEY.")
     raise KalshiError(f"Kalshi {path} failed after {retries} attempts: {last_err}") from last_err
+
+
+def _auth_request(method: str, path: str, json_body: dict | None = None, retries: int = 5) -> Any:
+    """Signed authenticated request (order placement, cancellation, portfolio)."""
+    sign_path = f"/trade-api/v2{path}" if not path.startswith("/trade-api") else path
+    headers = auth_headers(method, sign_path)
+    headers["Content-Type"] = "application/json"
+    last_err = None
+    for attempt in range(retries):
+        try:
+            r = requests.request(method, f"{BASE}{path}", json=json_body, headers=headers, timeout=TIMEOUT)
+            if r.status_code in (401, 429, 500, 502, 503):
+                raise requests.RequestException(f"HTTP {r.status_code}")
+            if r.status_code >= 400:
+                raise KalshiError(f"Kalshi {method} {path} -> {r.status_code}: {r.text[:300]}")
+            return r.json() if r.text else {}
+        except requests.RequestException as e:
+            last_err = e
+            time.sleep(1.5 * (2 ** attempt))
+    if isinstance(last_err, requests.RequestException) and "401" in str(last_err):
+        raise KalshiAuthError("Kalshi auth rejected (401) after retries. Check KALSHI_API_KEY / KALSHI_PRIVATE_KEY.")
+    raise KalshiError(f"Kalshi {method} {path} failed after {retries} attempts: {last_err}") from last_err
+
+
+def place_order(ticker: str, side: str, count: float, price: float, reduce_only: bool = False) -> dict:
+    """Place a limit order. side: 'YES' or 'NO' (outcome we buy).
+
+    Kalshi V2: book_side bid=yes, ask=no; price is the outcome's own price
+    (fixed-point dollars, strings). count in contracts (string).
+    """
+    import uuid
+    body = {
+        "ticker": ticker,
+        "client_order_id": str(uuid.uuid4()),
+        "side": "bid" if side == "YES" else "ask",
+        "count": f"{count:.2f}",
+        "price": f"{price:.4f}",
+        "time_in_force": "good_till_canceled",
+        "self_trade_prevention_type": "taker_at_cross",
+        "post_only": False,
+        "reduce_only": reduce_only,
+    }
+    return _auth_request("POST", "/portfolio/orders", json_body=body)
+
+
+def get_orders(status: str | None = None, ticker: str | None = None, limit: int = 200) -> list[dict]:
+    params: dict = {"limit": limit}
+    if status:
+        params["status"] = status
+    if ticker:
+        params["ticker"] = ticker
+    d = get_json("/portfolio/orders", params, auth=True)
+    return d.get("orders") or []
+
+
+def get_order(order_id: str) -> dict:
+    d = get_json(f"/portfolio/orders/{order_id}", auth=True)
+    return (d or {}).get("order") or {}
+
+
+def cancel_order(order_id: str) -> dict:
+    return _auth_request("DELETE", f"/portfolio/events/orders/{order_id}")
+
+
+def get_positions(limit: int = 200) -> list[dict]:
+    d = get_json("/portfolio/positions", {"limit": limit}, auth=True)
+    return d.get("market_positions") or d.get("positions") or []
+
+
+def get_fills(limit: int = 200) -> list[dict]:
+    d = get_json("/portfolio/fills", {"limit": limit}, auth=True)
+    return d.get("fills") or []
+
+
+def get_balance() -> dict:
+    return get_json("/portfolio/balance", auth=True)
 
 
 def _to_float(v) -> float:

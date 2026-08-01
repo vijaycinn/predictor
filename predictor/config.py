@@ -38,6 +38,8 @@ DEFAULTS: dict = {
         "ev_min_net": 0.02,
         "prefer_maker": True,
         "aggressiveness": 0.5,
+        "order_ttl_hours": 4,
+        "stop_loss": False,
     },
     "risk": {
         "capital_usd": 1000,

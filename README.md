@@ -88,6 +88,36 @@ python3 cli.py reject 3         # reject
 Proposals expire after `approval.ttl_hours` (2h). `recheck_on_approve` re-fetches
 the book and recomputes EV at execution time — fails closed if edge faded.
 
+## Order lifecycle
+
+Every buy becomes a GTC limit order (maker-preferred):
+
+```
+BUY -> RESTING (limit not crossed) | OPEN (crossed)
+  RESTING -> reconcile pass each scan:
+      market comes to limit  -> FILLED (OPEN, fill at limit/better)
+      order_ttl_hours (4h)   -> CANCELED
+  OPEN -> closed at resolution (auto P&L) or `cli.py close <trade_id>`
+```
+
+- `python3 cli.py orders` — lifecycle view (resting/open, req/fill sizes, exchange order id)
+- `python3 cli.py close <trade_id>` — manual exit: paper closes at book,
+  live Kalshi places reduce_only sell
+- `python3 cli.py cancel <trade_id>` — cancel resting (live: cancels on exchange too)
+- Live mode reconciles against Kalshi's real order book each scan (GET
+  /portfolio/orders, fills, positions)
+
+**NO STOP-LOSS** (per VJ): prediction markets are high-risk/high-reward events;
+positions ride to resolution or manual close. `execution.stop_loss: false`.
+
+## Live trading (Kalshi wired, not active)
+
+- `mode: live` + `venue: kalshi` — real GTC orders via signed API, $2/trade cap
+  + approval gate + portfolio limits all active. Kalshi wallet is internal
+  (no external wallet/gas needed); balance $61.61.
+- Polymarket live still requires POLYMARKET_PRIVATE_KEY + gas wallet (stub).
+- Order placement is code-complete but NOT fired — requires explicit go.
+
 ## Usage
 
 ```bash

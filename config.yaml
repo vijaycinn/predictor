@@ -32,6 +32,8 @@ execution:
   ev_min_net: 0.02           # min EV_net per share after fees/slippage
   prefer_maker: true         # rest limit orders when possible
   aggressiveness: 0.5        # 0 = best price only, 1 = cross spread aggressively
+  order_ttl_hours: 4         # resting orders cancelled after this (lifecycle)
+  stop_loss: false           # NO STOP-LOSS (VJ): high-risk/high-reward events
 
 risk:
   capital_usd: 1000

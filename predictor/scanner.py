@@ -101,7 +101,10 @@ def run_scan(conn, cfg: dict, llm_overrides: dict | None = None, verbose: bool =
     # 1. resolution pass first (settle anything already closed)
     resolved = learn.check_resolutions(conn)
 
-    # 2. expire stale proposals
+    # 2. order lifecycle: fill/cancel resting orders (paper + live)
+    order_events = executor_mod.reconcile_orders(conn, cfg)
+
+    # 3. expire stale proposals
     expired = db.expire_stale_proposals(conn, approval_cfg.get("ttl_hours", 2.0))
 
     # 3. discover candidate markets
@@ -253,6 +256,7 @@ def run_scan(conn, cfg: dict, llm_overrides: dict | None = None, verbose: bool =
         "proposals": len([t for t in top if t["status"] == "PENDING_APPROVAL"]),
         "trades_executed": len([t for t in top if t["status"] not in ("PENDING_APPROVAL",)]),
         "trades_filled": sum(1 for t in top if t["status"] in ("OPEN", "PARTIAL")),
+        "order_events": order_events,
         "stale_expired": expired,
         "resolved": resolved,
         "top": top,

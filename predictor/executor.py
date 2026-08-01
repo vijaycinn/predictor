@@ -1,4 +1,10 @@
-"""Trade execution: paper fills (deterministic) + live stub (needs wallet key)."""
+"""Trade execution: paper fills (deterministic) + live Kalshi orders.
+
+Order lifecycle (both modes): BUY -> RESTING (maker, at limit) or OPEN
+(crossed); reconcile pass re-checks RESTING orders each scan -> fills when the
+market comes to the limit, cancels after TTL. Positions close at resolution or
+manual `close` (no stop-loss: high-risk/high-reward events, per VJ).
+"""
 from __future__ import annotations
 
 import os
@@ -7,9 +13,13 @@ import time
 from . import db
 
 
+def _order_ttl(cfg: dict) -> float:
+    return cfg.get("execution", {}).get("order_ttl_hours", 4.0) * 3600
+
+
 class PaperExecutor:
-    """Deterministic paper fills. BUY at limit: fills at limit if limit >= ask (crossed),
-    partial by ask depth; otherwise rests unfilled (maker, no fill this cycle)."""
+    """Deterministic paper fills. BUY at limit: fills at limit if limit >= ask
+    (crossed), partial by depth; otherwise rests unfilled (maker)."""
 
     def __init__(self, conn, cfg: dict):
         self.conn = conn
@@ -38,7 +48,7 @@ class PaperExecutor:
         else:
             fill_price = None
             fill_size = 0.0
-            status = "RESTING"  # maker order not filled this cycle
+            status = "RESTING"
 
         mid = features.get("mid")
         slippage = (fill_price - mid) if (fill_price is not None and mid is not None) else None
@@ -49,53 +59,96 @@ class PaperExecutor:
             "side": side,
             "action": "BUY",
             "size": fill_size,
+            "requested_size": size,
+            "filled_size": fill_size,
             "limit_price": limit,
             "fill_price": fill_price,
             "slippage": slippage,
             "status": status,
+            "order_status": "LIVE" if status == "RESTING" else "FILLED",
+            "ttl_expires_at": time.time() + _order_ttl(self.cfg),
             "created_at": time.time(),
         }
-        if status in ("OPEN", "PARTIAL"):
-            trade["id"] = db.insert_trade(self.conn, trade)
-        else:
-            # RESTING orders: log as trade row for transparency but not an open position
-            trade["status"] = "RESTING"
-            trade["id"] = db.insert_trade(self.conn, trade)
+        trade["id"] = db.insert_trade(self.conn, trade)
         return trade
 
 
 class LiveExecutor:
-    """Live execution via py-clob-client (Polymarket) / signed Kalshi orders.
-    Requires POLYMARKET_PRIVATE_KEY or KALSHI_API_KEY+KALSHI_PRIVATE_KEY env.
-    NOT wired for placing orders yet — paper mode is the safe default.
+    """Live execution. Kalshi only for now (internal wallet — no external
+    wallet/gas needed). Polymarket live requires POLYMARKET_PRIVATE_KEY wiring.
 
     HARD RULES:
     - NO MARGIN TRADING EVER. Only fully cash-collateralized binary event
       contracts. Never place margin/leveraged orders, never touch perps/futures.
-    - Every order sized <= risk.max_trade_usd (currently $2) by the scanner.
+    - Every order sized <= risk.max_trade_usd ($2) by the scanner.
+    - Limit orders only (GTC), reconciled each scan; cancelled on TTL expiry.
+    - No stop-loss (per VJ): prediction markets = high risk/reward events.
     """
 
     def __init__(self, conn, cfg: dict):
-        from .risk import MarginTradingError, assert_no_margin
+        from .risk import assert_no_margin
         assert_no_margin(cfg)  # duplicate guard: config cannot enable margin
         venue = cfg.get("venue", "polymarket")
-        if venue == "kalshi":
-            from . import kalshi
-            if not kalshi.auth_ready()["KALSHI_API_KEY"] or not kalshi.auth_ready()["KALSHI_PRIVATE_KEY"]:
-                raise RuntimeError("LiveExecutor (kalshi) requires KALSHI_API_KEY + KALSHI_PRIVATE_KEY env vars.")
-        else:
-            key = os.environ.get("POLYMARKET_PRIVATE_KEY")
-            if not key:
-                raise RuntimeError(
-                    "LiveExecutor requires POLYMARKET_PRIVATE_KEY env var. "
-                    "Stay in paper mode until configured."
-                )
+        if venue != "kalshi":
+            raise RuntimeError(
+                "LiveExecutor: only Kalshi live is wired (internal wallet). "
+                "Polymarket live needs POLYMARKET_PRIVATE_KEY + gas wallet."
+            )
+        from . import kalshi
+        if not (kalshi.auth_ready()["KALSHI_API_KEY"] and kalshi.auth_ready()["KALSHI_PRIVATE_KEY"]):
+            raise RuntimeError("LiveExecutor (kalshi) requires KALSHI_API_KEY + KALSHI_PRIVATE_KEY env vars.")
         self.conn = conn
         self.cfg = cfg
-        # TODO: init exchange client here once wallet funded
+        self.kalshi = kalshi
 
     def execute(self, sig: dict, size: float, limit: float, features: dict) -> dict:
-        raise NotImplementedError("Live execution not yet wired. Paper mode only.")
+        """Place real GTC limit order on Kalshi. Returns local trade record."""
+        from .risk import MarginTradingError  # noqa: F401 (margin guard already asserted)
+        ticker = sig["condition_id"]
+        resp = self.kalshi.place_order(ticker, sig["side"], size, limit)
+        order = resp.get("order") or resp
+        order_id = order.get("order_id") or resp.get("order_id")
+        if not order_id:
+            raise RuntimeError(f"Kalshi order placement returned no order_id: {resp}")
+        order_status = str(order.get("status", "resting")).lower()
+
+        if order_status == "filled":
+            status = "OPEN"
+            fill_price = float(order.get("average_fill_price") or order.get("price") or limit)
+        elif order_status in ("canceled", "cancelled", "expired"):
+            status = "CANCELED"
+            fill_price = None
+        else:  # resting
+            status = "RESTING"
+            fill_price = None
+
+        trade = {
+            "signal_id": sig.get("signal_id"),
+            "condition_id": ticker,
+            "side": sig["side"],
+            "action": "BUY",
+            "size": float(order.get("filled_count") or 0) if status in ("OPEN", "PARTIAL") else 0.0,
+            "requested_size": size,
+            "filled_size": float(order.get("filled_count") or 0),
+            "limit_price": limit,
+            "fill_price": fill_price,
+            "slippage": None,
+            "status": status,
+            "order_status": order_status,
+            "exchange_order_id": order_id,
+            "ttl_expires_at": time.time() + _order_ttl(self.cfg),
+            "created_at": time.time(),
+        }
+        trade["id"] = db.insert_trade(self.conn, trade)
+        return trade
+
+    def cancel(self, trade_id: int) -> dict:
+        row = self.conn.execute("SELECT * FROM trades WHERE id=?", (trade_id,)).fetchone()
+        if not row or not row["exchange_order_id"]:
+            return {"ok": False, "error": f"trade #{trade_id} has no exchange order id"}
+        resp = self.kalshi.cancel_order(row["exchange_order_id"])
+        db.update_trade(self.conn, trade_id, {"status": "CANCELED", "order_status": "canceled"})
+        return {"ok": True, "cancel_response": resp}
 
 
 def make_executor(conn, cfg: dict):
@@ -103,3 +156,94 @@ def make_executor(conn, cfg: dict):
     if mode == "live":
         return LiveExecutor(conn, cfg)
     return PaperExecutor(conn, cfg)
+
+
+def reconcile_orders(conn, cfg: dict) -> list[dict]:
+    """Order lifecycle pass: fill/cancel RESTING orders.
+
+    Paper: re-fetch book; fill if limit crossed, cancel after TTL.
+    Live (kalshi): query exchange order status; update accordingly, cancel on TTL.
+    Returns list of lifecycle events for reporting.
+    """
+    from . import risk as risk_mod
+    risk_mod.assert_no_margin(cfg)
+    from .scanner import get_venue
+    ing = get_venue(cfg)
+    events = []
+    now = time.time()
+
+    if cfg.get("mode") == "live":
+        from . import kalshi
+        orders = kalshi.get_orders(status="resting")
+        by_id = {o["order_id"]: o for o in orders}
+        for t in db.resting_orders(conn):
+            oid = t.get("exchange_order_id")
+            if not oid:
+                continue
+            remote = by_id.get(oid)
+            if remote is None:
+                # order no longer resting remotely — refetch single
+                try:
+                    remote = kalshi.get_order(oid)
+                except Exception:
+                    remote = None
+            if remote:
+                rstatus = str(remote.get("status", "")).lower()
+                if rstatus == "filled":
+                    fill = float(remote.get("average_fill_price") or remote.get("price") or t["limit_price"])
+                    filled = float(remote.get("filled_count") or t["requested_size"] or 0)
+                    db.update_trade(conn, t["id"], {
+                        "status": "OPEN", "order_status": "filled", "fill_price": fill,
+                        "filled_size": filled, "size": filled,
+                    })
+                    events.append({"trade_id": t["id"], "event": "filled", "fill_price": fill})
+                elif rstatus in ("canceled", "cancelled", "expired"):
+                    db.update_trade(conn, t["id"], {"status": "CANCELED", "order_status": rstatus})
+                    events.append({"trade_id": t["id"], "event": "canceled_remote"})
+            # TTL expiry → cancel
+            ttl = t.get("ttl_expires_at")
+            ttl = ttl if ttl is not None else (now + 3600)
+            if ttl < now:
+                try:
+                    kalshi.cancel_order(oid)
+                except Exception:
+                    pass
+                db.update_trade(conn, t["id"], {"status": "CANCELED", "order_status": "canceled_ttl"})
+                events.append({"trade_id": t["id"], "event": "canceled_ttl"})
+    else:
+        # paper: re-check books
+        for t in db.resting_orders(conn):
+            ttl = t.get("ttl_expires_at")
+            ttl = ttl if ttl is not None else (now + 3600)
+            if ttl < now:
+                db.update_trade(conn, t["id"], {"status": "CANCELED", "order_status": "canceled_ttl"})
+                events.append({"trade_id": t["id"], "event": "canceled_ttl"})
+                continue
+            try:
+                book = ing.fetch_orderbook(t["condition_id"] if cfg.get("venue") == "kalshi" else t["condition_id"])
+                if book.get("best_bid") is None:
+                    continue
+                limit = t["limit_price"]
+                side = t["side"]
+                if side == "YES":
+                    ask = book.get("best_ask")
+                    if ask is not None and limit >= ask:
+                        fill = ask
+                    else:
+                        continue
+                else:
+                    bid = book.get("best_bid")
+                    no_ask = (1.0 - bid) if bid is not None else None
+                    if no_ask is not None and limit >= no_ask:
+                        fill = no_ask
+                    else:
+                        continue
+                db.update_trade(conn, t["id"], {
+                    "status": "OPEN", "order_status": "filled", "fill_price": fill,
+                    "filled_size": t["requested_size"] or t["size"], "size": t["requested_size"] or t["size"],
+                    "slippage": fill - (book.get("mid") or fill),
+                })
+                events.append({"trade_id": t["id"], "event": "filled", "fill_price": fill})
+            except Exception:
+                continue
+    return events
