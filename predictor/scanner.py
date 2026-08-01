@@ -74,13 +74,16 @@ def evaluate_market(conn, cfg: dict, ing, market: dict, llm_p: float | None = No
 
 
 def _size_trade(sig: dict, cfg: dict) -> tuple[float, float]:
-    """(size_dollars, size_contracts) — Kelly dollars hard-capped at max_trade_usd."""
+    """(size_dollars, size_contracts). Paper: full Kelly on virtual capital —
+    no caps, thesis validation. Live: hard-capped at max_trade_usd."""
     frac = risk_mod.kelly_size(sig, cfg)
     if frac <= 0:
         return 0.0, 0.0
     capital = cfg.get("risk", {}).get("capital_usd", 1000)
-    max_trade = cfg.get("risk", {}).get("max_trade_usd", 2.0)
-    size_dollars = min(frac * capital, max_trade)
+    size_dollars = frac * capital
+    if cfg.get("mode") == "live":
+        max_trade = cfg.get("risk", {}).get("max_trade_usd", 2.0)
+        size_dollars = min(size_dollars, max_trade)
     price_side = max(sig["ev_calc"]["price_side"], 0.01)
     size_contracts = max(1.0, int(size_dollars / price_side))
     return size_dollars, size_contracts
@@ -88,9 +91,11 @@ def _size_trade(sig: dict, cfg: dict) -> tuple[float, float]:
 
 def run_scan(conn, cfg: dict, llm_overrides: dict | None = None, verbose: bool = False) -> dict:
     """llm_overrides: {condition_id: prob_yes} from optional LLM review pass."""
-    risk_mod.assert_no_margin(cfg)  # NO MARGIN TRADING EVER
+    risk_mod.assert_no_margin(cfg)  # NO MARGIN TRADING EVER (all modes)
     approval_cfg = cfg.get("approval", {})
-    approval_required = approval_cfg.get("required", True)
+    is_live = cfg.get("mode") == "live"
+    # approval gate: LIVE ONLY. Paper executes autonomously (thesis validation).
+    approval_required = is_live and approval_cfg.get("required", True)
     llm_overrides = llm_overrides or {}
 
     # 1. resolution pass first (settle anything already closed)
@@ -264,6 +269,8 @@ def execute_proposal(conn, cfg: dict, pid: int, verbose: bool = False) -> dict:
     the proposal with a note instead of trading blind.
     """
     risk_mod.assert_no_margin(cfg)
+    if cfg.get("mode") != "live":
+        return {"ok": False, "error": "approval flow is LIVE only; paper mode executes autonomously"}
     approval_cfg = cfg.get("approval", {})
     recheck = approval_cfg.get("recheck_on_approve", True)
 

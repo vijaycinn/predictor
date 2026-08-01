@@ -90,6 +90,10 @@ def capital_available(cfg: dict, positions: list[dict]) -> float:
 
 
 def check_risk_limits(conn, sig: dict, size_dollars: float, cfg: dict) -> tuple[bool, str]:
+    """Portfolio hard limits. LIVE ONLY — paper mode is an unrestricted thesis
+    lab (virtual capital, Kelly sizing only). Real trades get all the rules."""
+    if cfg.get("mode") != "live":
+        return True, ""
     risk = cfg.get("risk", {})
     capital = risk.get("capital_usd", 1000)
     max_trade = risk.get("max_trade_usd", 2.0)

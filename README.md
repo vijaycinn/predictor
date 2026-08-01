@@ -67,23 +67,26 @@ Auth = RSA-PSS/SHA256 over `timestamp + METHOD + path` (no query), sent as
 Public market data works keyless; credentials unlock portfolio/orders (live path).
 `python3 cli.py scan --venue kalshi` prints auth readiness to stderr.
 
-## Hard rules (VJ, Aug-2026)
+## Mode semantics
 
-1. **Max $2 per trade** — `risk.max_trade_usd: 2.0`. Kelly sizing hard-capped;
-   `check_risk_limits` re-verifies notional at execution.
-2. **NO MARGIN TRADING EVER** — `risk.margin_trading` must stay false; code
-   raises `MarginTradingError` if ever set true (scanner + executor double guard).
-   Only fully cash-collateralized binary event contracts. No perps/futures.
-3. **User approval per buy** — `approval.required: true`. Scans only create
-   PENDING proposals; execution requires explicit approval:
-   ```bash
-   python3 cli.py proposals        # list pending
-   python3 cli.py approve 1 2      # approve + execute (re-verifies EV first)
-   python3 cli.py reject 3         # reject
-   ```
-   Proposals expire after `approval.ttl_hours` (2h). `recheck_on_approve` re-fetches
-   the book and recomputes EV at execution time — fails closed if edge faded.
-   Cron job delivers proposals to Telegram; reply `approve <ids>` / `reject <ids>`.
+- **paper (default)** — unrestricted thesis lab. No $2 cap, no approval gate,
+  no portfolio hard limits. Trades execute autonomously on Kelly-sized virtual
+  capital ($1000). Purpose: validate hypotheses, gather calibration data.
+- **live** — all rules bite: `max_trade_usd` ($2), per-buy approval, portfolio
+  limits (daily loss, exposure, concurrency). Not wired for execution yet.
+- **NO MARGIN TRADING EVER applies in both modes** — code raises
+  `MarginTradingError` if the flag is ever set true (scanner + executor double
+  guard). Only fully cash-collateralized binary event contracts.
+
+### Live approval flow (not active until mode: live)
+
+```bash
+python3 cli.py proposals        # list pending
+python3 cli.py approve 1 2      # approve + execute (re-verifies EV first)
+python3 cli.py reject 3         # reject
+```
+Proposals expire after `approval.ttl_hours` (2h). `recheck_on_approve` re-fetches
+the book and recomputes EV at execution time — fails closed if edge faded.
 
 ## Usage
 
