@@ -1,0 +1,54 @@
+# Predictor — prediction market trading agent config
+venue: polymarket
+mode: paper                # paper | live (live requires POLYMARKET_PRIVATE_KEY + wallet)
+
+scan:
+  max_markets: 40          # markets evaluated per scan
+  categories: [crypto, politics, sports, economics]
+  min_volume_usd: 50000    # total market volume gate
+  min_24h_volume: 5000     # recent activity gate (approx via liquidity/trades)
+  min_liquidity: 1000      # gamma liquidity field gate
+  min_recent_trades: 5     # trades in last window to consider market active
+
+fees:
+  taker_fee_per_share: 0.0   # Polymarket currently 0; set when venue changes
+  maker_fee_per_share: 0.0
+  gas_per_trade_usd: 0.0
+
+execution:
+  max_spread: 0.04           # skip markets wider than this
+  min_hours_to_expiry: 2
+  max_days_to_expiry: 400    # politics/econ run long-dated
+  min_edge: 0.03             # min |estimated_prob - price| to act (3 cents)
+  ev_min_net: 0.02           # min EV_net per share after fees/slippage
+  prefer_maker: true         # rest limit orders when possible
+  aggressiveness: 0.5        # 0 = best price only, 1 = cross spread aggressively
+
+risk:
+  capital_usd: 1000
+  max_per_trade_frac: 0.20
+  max_notional_frac: 0.60
+  max_daily_loss_usd: 50
+  max_per_event_frac: 0.30
+  kelly_fraction: 0.25
+  max_concurrent_positions: 12
+  max_same_category_frac: 0.40
+
+prob:
+  market_price_weight: 0.55
+  orderbook_weight: 0.15
+  momentum_weight: 0.10
+  base_rate_weight: 0.05
+  sentiment_weight: 0.05
+  llm_weight: 0.30        # applied only when an LLM override exists; else redistributed to market
+  shortlist_edge: 0.008   # |edge| bar for LLM review shortlist
+  shortlist_max: 10       # cap on shortlist size
+  momentum_lookback: 24      # points from price history
+  momentum_scale: 0.10       # max prob shift from momentum
+  book_imbalance_scale: 0.03 # max prob shift from orderbook imbalance
+  min_prob: 0.01
+  max_prob: 0.99
+
+learn:
+  calibration_buckets: 10    # decile buckets for calibration report
+  min_samples_per_bucket: 5

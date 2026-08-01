@@ -1,0 +1,92 @@
+# predictor — AI-driven prediction market trading & research agent
+
+Polymarket (venue: binary markets) trading agent. Deterministic signal engine +
+optional LLM overlay. Paper trading by default; live path stubbed.
+
+## Architecture
+
+```
+discover (gamma /events, per-category) -> ingest (CLOB book, price history, data API trades/OI)
+  -> features (price/orderbook/sentiment/time vectors)
+  -> signal (calibrated prob blend + confidence + fee-aware EV)
+  -> filters -> Kelly sizing -> risk limits -> paper/live executor
+  -> SQLite (markets, snapshots, features, signals, trades, outcomes, blocked)
+  -> learn (resolution tracking, calibration report, bias by category)
+```
+
+- `predictor/ingest.py` — Polymarket public APIs (read-only, no auth)
+- `predictor/features.py` — feature vector construction (documented in DB)
+- `predictor/signals.py` — probability blend, confidence tiers, EV math
+- `predictor/risk.py` — mechanical filters, Kelly sizing, exposure limits
+- `predictor/executor.py` — PaperExecutor (deterministic fills), LiveExecutor stub
+- `predictor/learn.py` — outcome resolution, calibration/Brier, category bias
+- `predictor/scanner.py` — one full scan cycle
+- `cli.py` — scan | status | calibrate | resolve
+
+## Probability blend
+
+```
+P(YES) = w_market*price + w_book*book_adj + w_momentum*momentum_adj
+       + w_base*base_rate + w_sentiment*flow_adj + [w_llm*llm_override]
+```
+
+Market price stays dominant (efficient baseline). LLM weight only activates when
+an override exists (`--llm-overrides`); otherwise redistributed to market price.
+All component values logged per signal for transparency/backtest.
+
+## EV math (per share)
+
+```
+EV_raw = P(side) - price(side)
+fees:   Polymarket formula  fee = shares x feeRate x p x (1-p), feeRate in bps
+        (gamma fields makerBaseFee/takerBaseFee are bps; 1000 = 10%)
+        fallback: config fees.*_per_share when market has no fee schedule
+slippage: maker=0 (rest at limit), taker=half_spread x aggressiveness
+EV_net = EV_raw - fee - slippage
+Gate:   EV_net >= ev_min_net (0.02) AND |edge| >= min_edge (0.03)
+```
+
+## Usage
+
+```bash
+python3 cli.py scan                          # full cycle, no LLM overlay
+python3 cli.py scan --shortlist /tmp/sl.json # emit LLM review candidates
+python3 cli.py scan --llm-overrides /tmp/ov.json  # apply researched estimates
+python3 cli.py status                        # positions + P&L
+python3 cli.py calibrate                     # reliability table, Brier, category bias
+python3 cli.py resolve                       # settle closed markets
+```
+
+Override file shape: `{"<condition_id>": 0.12, ...}`.
+
+## Cron (agent-driven loop)
+
+Hermes cron job runs every 2h (CT work hours):
+1. `scan --shortlist` — get candidate markets with real liquidity
+2. Agent researches top candidates (web), forms independent P(YES) per market
+3. Writes overrides JSON only where evidence supports >= 5c divergence
+4. `scan --llm-overrides` — trades fire on fee-aware EV
+5. Deliver brief: top ideas, paper positions, risk state
+
+See cron job "predictor-scan" for the live prompt.
+
+## Live trading (NOT enabled)
+
+- `mode: live` in config.yaml + `POLYMARKET_PRIVATE_KEY` env
+- LiveExecutor stub — requires py-clob-client wiring (EIP-712 orders)
+- Do NOT enable until paper track record validates calibration
+
+## Learning loop
+
+- Every scan: resolution check settles closed markets, marks trade P&L
+- `calibrate` — decile reliability table + Brier score + per-category bias
+- Signals store prob_yes, confidence, EV, features at decision time for backtest
+- Parameter changes: propose in config, never silent
+
+## Known limitations
+
+- Paper fills: RESTING maker orders never re-checked for later fills
+- No order cancellation/exit management yet (lifecycle hooks TODO)
+- Sentiment = market-internal proxies (flow, imbalance, momentum); external
+  social feeds (LunarCrush) pluggable later
+- LLM overlay runs in cron agent loop, not inside the package
