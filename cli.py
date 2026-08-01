@@ -203,6 +203,16 @@ def cmd_arb(args):
     if args.health:
         print("predexon health:", predexon.health())
         return
+    if args.pmxt:
+        from predictor import pmxt
+        res = pmxt.ranked_opportunities(min_net_edge=0.0, limit=args.limit)
+        print(f"PMXT Router arb feed | total: {res['total_arbs']} | kalshi legs: {res['kalshi_legs']} | net-edge list below")
+        for o in res["opportunities"][:args.limit]:
+            k = f" K={o.get('kalshi_ticker')}" if o.get("kalshi_ticker") else ""
+            flag = "EXECUTABLE" if o.get("kalshi_ticker") else "discovery-only"
+            print(f"  {o['net_edge']*100:6.2f}% {o['buy_venue']:10}->{o['sell_venue']:10} {o['buy_price']:.4f}/{o['sell_price']:.4f} | {o['title_a'][:34]} [{flag}]{k}")
+            print(f"        [{o['validation']}]")
+        return
     cfg = load_config(args.config)
     if args.min_volume:
         cfg["scan"] = {**cfg.get("scan", {}), "min_volume_usd": args.min_volume}
@@ -283,11 +293,12 @@ def main():
     p_cx.add_argument("--venue", default=None, choices=["polymarket", "kalshi"])
     p_cx.set_defaults(func=cmd_cancel)
 
-    p_arb = sub.add_parser("arb", help="Predexon arb check: Kalshi vs Polymarket equivalents")
+    p_arb = sub.add_parser("arb", help="arb check: Kalshi vs Polymarket (Predexon) or PMXT Router feed")
     p_arb.add_argument("--check", action="store_true", help="positive-net only + mispriced fallback")
     p_arb.add_argument("--health", action="store_true", help="Predexon API health check")
+    p_arb.add_argument("--pmxt", action="store_true", help="use PMXT Router arb feed (hosted, cross-venue)")
     p_arb.add_argument("--min-volume", type=int, default=5000, help="min Kalshi dollar volume")
-    p_arb.add_argument("--limit", type=int, default=30, help="max Kalshi markets scanned")
+    p_arb.add_argument("--limit", type=int, default=30, help="max opportunities")
     p_arb.set_defaults(func=cmd_arb)
 
     p_cal = sub.add_parser("calibrate", help="calibration report")
