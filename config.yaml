@@ -1,5 +1,5 @@
 # Predictor — prediction market trading agent config
-venue: polymarket          # polymarket | kalshi (data + paper trading)
+venue: kalshi              # live-capable venue (Kalshi keys in env, internal wallet)
 kalshi:
   base_url: https://external-api.kalshi.com/trade-api/v2
   # credentials come from env: KALSHI_API_KEY (key ID) + KALSHI_PRIVATE_KEY (RSA PEM)
@@ -9,7 +9,7 @@ kalshi:
     min_24h_volume: 300
     min_liquidity: 100
 
-mode: paper                # paper | live — LIVE requires venue=kalshi (Kalshi API keys in env, internal wallet)
+mode: live                # LIVE — real money. venue must be kalshi
 
 scan:
   max_markets: 40          # markets evaluated per scan
@@ -37,9 +37,9 @@ execution:
 
 risk:
   capital_usd: 1000
-  max_trade_usd: 2.0        # LIVE ONLY: hard cap per trade. Paper has NO limits (thesis validation).
+  max_trade_usd: 1.0        # LIVE cap: $1 per trade (VJ set 2026-08-01)
   margin_trading: false     # NO MARGIN TRADING EVER — code asserts this stays false (all modes)
-  max_open_positions: 5     # cap on concurrent open positions (both modes; adjustable)
+  max_open_positions: 2     # cap on concurrent open positions (VJ set 2026-08-01)
   max_per_trade_frac: 0.20
   max_notional_frac: 0.60
   max_daily_loss_usd: 50
