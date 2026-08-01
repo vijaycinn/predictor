@@ -95,6 +95,22 @@ discover (per-category, volume-gated)
 - `predictor/scanner.py` — scan orchestration + approval-gated execution
 - `predictor/learn.py` — resolution, calibration, performance
 
+## Predexon layer (primary market-data tool)
+
+- Predexon MCP server wired into Hermes (`mcp_servers.predexon`, npx
+  predexon-mcp, `PREDEXON_API_KEY` env). Tools surface as `mcp_predexon_*`
+  after restart. 40 tools: Polymarket market data + smart-wallet analytics,
+  Kalshi markets/trades/orderbooks, Binance, Limitless, Opinion, Predict.Fun.
+- Kalshi via Predexon = **data only** (their docs: no Kalshi trade execution).
+  Live Kalshi orders stay on the native Kalshi path in `executor.py`.
+- **Predexon has NO `find_matching_markets` tool** (verified against
+  predexon-mcp 0.3.0 source + REST openapi). Cross-venue matching is built in
+  `predictor/arb.py` with strict equivalence gates: Jaccard token-set
+  similarity (0.85+ strong), disqualifier-token rejection (vice/senate/house…),
+  close-time proximity, numeric-target overlap, Kalshi candidate subtitles.
+- CLI: `python3 cli.py arb --check` — Kalshi vs Polymarket synthetic-arb scan;
+  `--health` pings Predexon. Dry-run only; weak matches never surfaced.
+
 ## Known limitations
 
 - Polymarket live un-wired (needs wallet + gas)
