@@ -14,7 +14,8 @@ from . import db
 
 
 def _order_ttl(cfg: dict) -> float:
-    return cfg.get("execution", {}).get("order_ttl_hours", 4.0) * 3600
+    # VJ rule: max 24h order lifetime — never longer (exchange + DB aligned)
+    return min(cfg.get("execution", {}).get("order_ttl_hours", 24.0), 24.0) * 3600
 
 
 class PaperExecutor:

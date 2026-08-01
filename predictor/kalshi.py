@@ -141,13 +141,16 @@ def _auth_request(method: str, path: str, json_body: dict | None = None, retries
     raise KalshiError(f"Kalshi {method} {path} failed after {retries} attempts: {last_err}") from last_err
 
 
-def place_order(ticker: str, side: str, count: float, price: float, reduce_only: bool = False) -> dict:
-    """Place a limit order. side: 'YES' or 'NO' (outcome we buy).
-
-    Kalshi V2: book_side bid=yes, ask=no; price is the outcome's own price
-    (fixed-point dollars, strings). count in contracts (string).
+def place_order(ticker: str, side: str, count: float, price: float, reduce_only: bool = False,
+                max_lifetime_hours: float = 24.0) -> dict:
+    """Place a GTC limit order. side: 'YES' -> bid, 'NO' -> ask.
+    V2 endpoint: POST /portfolio/events/orders (legacy /portfolio/orders
+    deprecated 2026-05-06). Prices are fixed-point dollar strings.
+    Order expires after max_lifetime_hours (VJ rule: max 24h, never longer).
     """
     import uuid
+    import time as _time
+    from datetime import datetime, timezone
     # Kalshi tick size is 1c for these markets; off-tick prices are rejected
     price_tick = round(price * 100) / 100.0
     body = {
@@ -157,6 +160,7 @@ def place_order(ticker: str, side: str, count: float, price: float, reduce_only:
         "count": f"{count:.2f}",
         "price": f"{price_tick:.4f}",
         "time_in_force": "good_till_canceled",
+        "expiration_time": (datetime.now(timezone.utc).timestamp() + max_lifetime_hours * 3600) * 1000,
         "self_trade_prevention_type": "taker_at_cross",
         "post_only": False,
         "reduce_only": reduce_only,
