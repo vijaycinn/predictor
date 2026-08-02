@@ -82,6 +82,13 @@ Last updated: 2026-08-02 (post-Donski incident).
     for breaking geo/macro news. Fallback: web_extract on the profile. Applies
     to all macro-news-driven analysis. xurl CLI not installed yet — fetch via
     web_extract or install xurl when access needed.
+18. **GEO-TRADES WINDOW — 7pm CST ONLY (VJ 2026-08-02).** Geopolitical
+    choke-point incidents (Hormuz, Suez, straits) → oil ▲, gold ▲, VIX ▲,
+    risk-OFF trades; de-escalation → inverse. Analyze Kalshi opportunities
+    from geopolitical reads ONLY at 7pm CST (after-hours, especially Sunday
+    PM — the post-move sets the tone for the week). Unless instructed, do NOT
+    do geo analysis at other times. Feed: xurl @DeItaone (installed at
+    /data/.hermes/home/.local/bin/xurl, auth verified).
 
 ## Retrospective — 2026-08-02 losses (drives rules above)
 
