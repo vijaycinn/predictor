@@ -124,9 +124,12 @@ class LiveExecutor:
         - RAISE GUARD: never pay more than max_price_raise_pct (10%) above the
           approved/reference price (sig.ev_calc.price_side or approved_price).
           Resting BELOW approved is always fine — that's the maker edge.
-        - LIVE FLOOR: live/in-play bets flagged is_live only when current score/
-          status implies >= min_live_win_prob (50%) win probability. <50% = lottery
-          bet, refused (override_live_floor to bypass). No chasing <50c live dogs.
+        - LIVE FLOOR: NEVER bet if outcome probability < min_win_prob (50%).
+          Applies to ALL YES buys. Probability must be independently established
+          (Polymarket cross-venue = arb, or verifiable research), carried in
+          sig.approved_price / ev_calc.price_side. Kalshi's own book is NOT a
+          valid source. Missing or <50% ref = refused (override_win_floor only
+          with explicit user confirmation).
         """
         from .risk import MarginTradingError  # noqa: F401 (margin guard already asserted)
         from . import risk as risk_mod
@@ -141,17 +144,26 @@ class LiveExecutor:
                     f"PRICE BAND GUARD: YES buy limit {float(limit):.3f} > {max_band:.0f}c cap. "
                     f"VJ rule: only 0-{max_band:.0f}c. Re-confirm at a cheaper level or set override_price_band."
                 )
-        # HARD LIVE FLOOR (VJ 2026-08-02): live/in-play bets only when current state
-        # implies >= min_live_win_prob win probability. No lottery bets on <50% outcomes.
-        if sig.get("is_live") and not sig.get("override_live_floor"):
-            min_live = float(self.cfg.get("execution", {}).get("min_live_win_prob", 0.50))
-            # use reference (approved/current) price as the win-prob proxy for YES
-            live_ref = sig.get("approved_price") or sig.get("ev_calc", {}).get("price_side")
-            if live_ref is not None and float(live_ref) < min_live:
+        # HARD WIN FLOOR (VJ 2026-08-02): NEVER bet if outcome probability < 50%.
+        # Applies to ALL YES buys (not just live). The probability must be
+        # independently established — Polymarket cross-venue price (arb) or
+        # verifiable research source — and carried in sig.approved_price /
+        # ev_calc.price_side. Kalshi's own book alone is NOT a valid source
+        # (Kalshi prices can be thin/stale; Donski 0.34->0.90 proved it).
+        if sig.get("side") == "YES" and not sig.get("override_win_floor"):
+            min_win = float(self.cfg.get("execution", {}).get("min_win_prob", 0.50))
+            win_ref = sig.get("approved_price") or sig.get("ev_calc", {}).get("price_side")
+            if win_ref is None:
                 raise RuntimeError(
-                    f"LIVE FLOOR GUARD: current state implies {float(live_ref):.3f} win prob "
-                    f"< {min_live:.2f}. VJ rule: no lottery bets — live bets need >=50% win "
-                    f"from current score/status. SKIP or set override_live_floor."
+                    f"WIN FLOOR GUARD: no independent probability provided. VJ rule: "
+                    f"NEVER bet without >= {min_win:.0%} outcome prob from Polymarket/verifiable "
+                    f"source. Pass sig.approved_price or ev_calc.price_side from an independent venue."
+                )
+            if float(win_ref) < min_win:
+                raise RuntimeError(
+                    f"WIN FLOOR GUARD: outcome prob {float(win_ref):.3f} < {min_win:.0%}. "
+                    f"VJ rule: NEVER bet if outcome probability < 50%. "
+                    f"SKIP or set override_win_floor (explicit user confirmation only)."
                 )
         ticker = sig["condition_id"]
         hours_to_expiry = float(features.get("hours_to_expiry") or 0)

@@ -22,11 +22,15 @@ Last updated: 2026-08-02 (post-Donski incident).
    exchange-side + DB + paper (three places, aligned).
 6. **$1/trade cap.** `risk.max_trade_usd: 1.0`. No margin ever (code asserts).
    Position cap per config. No stop-loss — ride to resolution.
-7. **LIVE BETS: ≥50% win floor.** Live/in-play bets only when current score/status
-   implies >= `min_live_win_prob` (0.50) win probability. Sub-50% outcomes are
-   lottery bets — NEVER take them (Donski/underdog losses 2026-08-02). Bias must
-   come from the CURRENT MATCH STATE, not hope. Flag sig `is_live`; guard refuses
-   <50% refs (override_live_floor only with explicit user confirmation).
+7. **NEVER BET IF OUTCOME PROBABILITY < 50%.** Applies to ALL bets (not just live).
+   - The probability of each outcome must be individually established from an
+     INDEPENDENT source: a different prediction market (Polymarket cross-venue =
+     arb scenario) or verifiable research indicating propensity of that outcome.
+   - Kalshi's own book alone is NOT a valid probability source (thin/stale books;
+     Donski 0.34→0.90 incident). The independent prob goes in `sig.approved_price`
+     / `ev_calc.price_side`; guard `min_win_prob: 0.50` refuses missing or <50% refs
+     (`override_win_floor` only with explicit user confirmation).
+   - Sub-50% outcomes are lottery bets — NEVER take them.
 
 ## Market selection rules
 

@@ -36,7 +36,7 @@ execution:
   maker_min_volume: 100      # min contracts at chosen maker level
   max_price_raise_pct: 10   # HARD (VJ 2026-08-02): NEVER pay >10% above approved price. Below always OK (maker).
   max_buy_price_cents: 40    # HARD BAND (VJ 2026-08-02): never buy YES above 40c unless explicit override
-  min_live_win_prob: 0.50    # HARD (VJ 2026-08-02): live/in-play bets only when current state implies >=50% win. No lottery bets.
+  min_win_prob: 0.50         # HARD (VJ 2026-08-02): NEVER bet if outcome prob <50%. Prob must come from independent source (Polymarket arb or verifiable research), not Kalshi book alone.
   aggressiveness: 0.5        # 0 = best price only, 1 = cross spread aggressively
   stop_loss: false           # NO STOP-LOSS (VJ): high-risk/high-reward events
 
