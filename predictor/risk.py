@@ -248,13 +248,15 @@ def _maker_level(ladder: list, ref_price: float, depth_cents: int, min_vol: floa
 
     VOLUME-PEAK RULE (VJ 2026-08-02): ALWAYS follow the volume — the market
     leans where the money sits, not where market makers bait. Choose the
-    level at the size-weighted center of mass of the qualifying cluster
-    (the collective intelligence), NOT the highest fillable level. A thin
-    bid at the top of the book is bait; the wall of size is the real lean.
+    level where VOLUME CONCENTRATES (density mode), NOT the highest fillable
+    level and NOT the size-weighted mean. A thin bid at the top of the book
+    is bait; the wall of size is the real lean. Bimodal books: a deep tail
+    (e.g. 0.01 x 2018) drags the arithmetic mean away from the money —
+    use the density peak (level with max neighborhood volume) instead.
 
-    Implementation: compute size-weighted mean of qualifying levels, then
-    return the level CLOSEST to that mean (the mode of the distribution).
-    Exclude levels more than 2 stddev from the peak (tail outliers).
+    Implementation: for each qualifying level, sum sizes of all levels within
+    ±3c (the cluster), pick the level with the maximum neighborhood volume
+    (the collective intelligence). Ties -> cheaper level (more edge as maker).
     """
     if not ladder or ref_price is None:
         return None
@@ -272,19 +274,14 @@ def _maker_level(ladder: list, ref_price: float, depth_cents: int, min_vol: floa
     if not levels:
         return None
 
-    # volume peak: size-weighted mean + stddev of the cluster
-    total = sum(s for _, s in levels)
-    mean = sum(p * s for p, s in levels) / total
-    var = sum(s * (p - mean) ** 2 for p, s in levels) / total
-    std = var ** 0.5 if var > 0 else 0.0
-
-    # exclude tail outliers (>2 stddev from peak)
-    floor = mean - 2.0 * std if std > 0 else mean
-    keep = [(p, s) for p, s in levels if p >= floor]
-    if not keep:
-        keep = levels
-
-    # FOLLOW THE MONEY: pick the level closest to the volume-weighted mean.
-    # Ties -> prefer the cheaper level (more edge for us as maker).
-    best = min(keep, key=lambda ps: (abs(ps[0] - mean), ps[0]))
-    return best[0]
+    # density mode: max neighborhood volume within +-0.03 of each level
+    band = 0.03
+    best = None
+    best_vol = -1.0
+    for p, s in levels:
+        vol_nb = sum(ss for pp, ss in levels if abs(pp - p) <= band)
+        # prefer bigger neighborhood volume; tie -> cheaper price
+        if vol_nb > best_vol or (vol_nb == best_vol and (best is None or p < best)):
+            best_vol = vol_nb
+            best = p
+    return best
