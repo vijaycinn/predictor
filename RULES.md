@@ -95,6 +95,14 @@ Last updated: 2026-08-02 (post-Donski incident).
     PM — the post-move sets the tone for the week). Unless instructed, do NOT
     do geo analysis at other times. Feed: xurl @DeItaone (installed at
     /data/.hermes/home/.local/bin/xurl, auth verified).
+19. **WEEKLY ORDER REVIEW — Sun 1am CT (VJ 2026-08-02).** Every Sunday 1am CT,
+    pull order history for the week before the previous Sunday, evaluate
+    success rate. If losses come from MECHANICS/understanding, produce an
+    easy-to-follow caveman-style engineering report on what failed + how to
+    improve, in Karpathy autoresearch style (state → analyze → hypothesize →
+    fix proposal). **Implementation changes ONLY on VJ approval** — the
+    review proposes, VJ disposes. Tool: scripts/weekly_review.py + agent
+    report.
 
 ## Retrospective — 2026-08-02 losses (drives rules above)
 
