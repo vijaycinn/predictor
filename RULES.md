@@ -3,6 +3,17 @@
 Authoritative rule set. If code conflicts with this file, this file wins — fix the code.
 Last updated: 2026-08-02 (post-Donski incident).
 
+## Mission — THE ONLY SUCCESS METRIC IS MARGIN OF PROFIT (VJ 2026-08-02)
+
+Sole purpose: **MAXIMIZE PROFITS.** Win rate is vanity; profit is the job.
+Every decision, rule, scan, and execution exists to grow margin of profit.
+Use Karpathy-style techniques to analyze METRIC vs DECISION continuously:
+for each decision, trace its effect on profit margin; hypothesize what
+drives the gap between decision and outcome; propose the smallest fix that
+improves the metric; measure again. Fine-tune relentlessly. A losing trade
+that follows the process is data, not failure. A winning trade that broke
+the process is luck, not skill — both get analyzed.
+
 ## Execution rules
 
 1. **LIMIT ORDERS ONLY — NO MARKET ORDERS, EVER.**
@@ -96,13 +107,13 @@ Last updated: 2026-08-02 (post-Donski incident).
     do geo analysis at other times. Feed: xurl @DeItaone (installed at
     /data/.hermes/home/.local/bin/xurl, auth verified).
 19. **WEEKLY ORDER REVIEW — Sun 1am CT (VJ 2026-08-02).** Every Sunday 1am CT,
-    pull order history for the week before the previous Sunday, evaluate
-    success rate. If losses come from MECHANICS/understanding, produce an
-    easy-to-follow caveman-style engineering report on what failed + how to
-    improve, in Karpathy autoresearch style (state → analyze → hypothesize →
-    fix proposal). **Implementation changes ONLY on VJ approval** — the
-    review proposes, VJ disposes. Tool: scripts/weekly_review.py + agent
-    report.
+    pull order history for the week before the previous Sunday, evaluate the
+    ONLY success metric: **MARGIN OF PROFIT**. If margins are poor and losses
+    come from MECHANICS/understanding, produce an easy-to-follow caveman-style
+    engineering report on what failed + how to improve, in Karpathy
+    autoresearch style (state → analyze → hypothesize → fix proposal).
+    **Implementation changes ONLY on VJ approval** — the review proposes, VJ
+    disposes. Tool: scripts/weekly_review.py + agent report.
 
 ## Retrospective — 2026-08-02 losses (drives rules above)
 

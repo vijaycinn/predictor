@@ -110,20 +110,25 @@ def main():
         pnl_s = f" P&L ${pnl:+.2f}" if pnl is not None else ""
         print(f"  {status:<13} {ticker[:44]:44s} {side} {qty:.0f}@{buy_price:.2f}{pnl_s}")
 
-    # 4. success rate + P&L
+    # 4. THE ONLY SUCCESS METRIC = MARGIN OF PROFIT (VJ 2026-08-02).
+    #    Win rate is vanity; profit is the job. Report both, judge by margin.
     resolved_rows = [r for r in rows if r["resolved"]]
     wins = sum(1 for r in resolved_rows if r["yes_won"])
     total_pnl = sum(
         r["qty"] * (1.0 - r["price"]) if r["yes_won"] else -r["qty"] * r["price"]
         for r in resolved_rows)
+    invested = sum(r["qty"] * r["price"] for r in resolved_rows)
     print("-" * 72)
     if resolved_rows:
         rate = wins / len(resolved_rows) * 100
-        print(f"SUCCESS RATE: {wins}/{len(resolved_rows)} = {rate:.0f}%   |   RESOLVED P&L: ${total_pnl:+.2f}")
+        margin = (total_pnl / invested * 100) if invested > 0 else 0.0
+        print(f"WINS: {wins}/{len(resolved_rows)} ({rate:.0f}%)   |   P&L: ${total_pnl:+.2f}")
+        print(f"** MARGIN OF PROFIT: {margin:+.1f}% on ${invested:.2f} invested **  <- THE metric")
     else:
         print("NO RESOLVED TRADES in target week (nothing settled yet).")
         rate = 0.0
         total_pnl = 0.0
+        margin = 0.0
 
     # 5. failure-mode split (mechanical vs thesis) — heuristic from ticker/price
     # mechanical markers: fills far from limit, IOC/reduce_only, >10c stale repricing
