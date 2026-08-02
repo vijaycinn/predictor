@@ -244,12 +244,20 @@ def limit_price(sig: dict, features: dict, cfg: dict) -> float:
 
 def _maker_level(ladder: list, ref_price: float, depth_cents: int, min_vol: float) -> float | None:
     """Best resting level >= depth_cents below ref_price with size >= min_vol.
-    Ladder is [[price, size], ...] ascending; scan from top of book down."""
+    Ladder is [[price, size], ...] ascending; scan from top of book down.
+
+    OUTLIER FILTER (VJ 2026-08-02): choose the NORMAL DISTRIBUTION PEAK of the
+    order book, excluding outliers at the ends of the spectrum. A single huge
+    bid far below the main cluster (e.g. 3000 contracts at 0.16 when the book
+    peaks at 0.17-0.18) is a stale/trap level — do NOT chase it. Price where
+    the bulk of volume concentrates: size-weighted mean of qualifying levels,
+    drop levels more than 2 stddev below that peak, return best remaining.
+    """
     if not ladder or ref_price is None:
         return None
     thresh = round(ref_price - depth_cents / 100.0, 3)
-    # ladder ascending -> iterate reversed (deep -> best), keep best (highest) qualifying
-    best = None
+    # qualifying levels (>= threshold, enough size)
+    levels = []
     for p, s in ladder:
         try:
             price = float(p)
@@ -257,5 +265,21 @@ def _maker_level(ladder: list, ref_price: float, depth_cents: int, min_vol: floa
         except (TypeError, ValueError):
             continue
         if price <= thresh and size >= min_vol:
-            best = price if best is None else max(best, price)
+            levels.append((price, size))
+    if not levels:
+        return None
+
+    # normal-distribution peak: size-weighted mean + stddev of the cluster
+    total = sum(s for _, s in levels)
+    mean = sum(p * s for p, s in levels) / total
+    var = sum(s * (p - mean) ** 2 for p, s in levels) / total
+    std = var ** 0.5 if var > 0 else 0.0
+
+    # exclude outliers at the cheap end of the spectrum (>2 stddev below peak)
+    floor = mean - 2.0 * std if std > 0 else mean
+    best = None
+    for price, size in levels:
+        if price < floor:
+            continue  # tail outlier — ignore (stale/trap bid)
+        best = price if best is None else max(best, price)
     return best

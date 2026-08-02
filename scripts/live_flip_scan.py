@@ -145,10 +145,8 @@ def main():
         print(f"[{now_ct:%H:%M} CT] No flip-zone live markets right now.")
         return
 
-    print(f"[{now_ct:%H:%M} CT] Live flip candidates ({len(rows)} shown, top 15)")
-    print("Flip-zone = mid 0.35-0.65, spread <=3c, depth >=200. Place limit 1-2c off.")
-    print("[BUYABLE] = cheap side <=40c — rest limit at/under band, fair may be higher (Ribero pattern).")
-    print("TTL by score state: set1-early 30-60m | mid-match 15-30m | moved>10c from limit = CANCEL")
+    print(f"[{now_ct:%H:%M} CT] LIVE FLIP — pick # | [B]=buyable <=40c")
+    print("  #  SIDE  LIMIT  TTL   MID   VOL        MATCH")
     print("=" * 78)
     for i, r in enumerate(rows[:15], 1):
         # flip bet = buy the CHEAP side (underdog at <0.50) betting it flips.
@@ -164,18 +162,17 @@ def main():
         # TTL from how far price is from limit: gap>10c = dead, 5-10c = 15m, <5c = 30-60m
         gap = abs(r["mid"] - limit)
         if gap > 0.10:
-            ttl = "CANCEL/RE-SCAN"
+            ttl = "CANCEL"
         elif gap > 0.05:
             ttl = "15m"
         elif r["mid"] <= 0.45:
             ttl = "60m"
         else:
             ttl = "30m"
-        tag = " [BUYABLE]" if r.get("buyable") else ""
-        print(f"{i:>2}. {r['t'][:44]:44s} mid={r['mid']:.2f} spr={r['spread']:.2f} "
-              f"vol=${r['vol']:8,.0f}{tag}")
-        print(f"     {r['q'][:70]}")
-        print(f"     -> {side} @ {limit:.2f} | TTL {ttl} | fill if price dips")
+        tag = "B" if r.get("buyable") else " "
+        short = r["q"].replace("Will ", "").replace(" win the ", " ").replace(
+            ": Qualification Round 1 match", "").replace(" match?", "").replace("?", "")[:44]
+        print(f"{i:>3}  {side:<3}  {limit:.2f}  {ttl:<6} {r['mid']:.2f}  ${r['vol']/1000:7.0f}k [{tag}] {short}")
 
 
 if __name__ == "__main__":

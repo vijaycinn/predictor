@@ -17,6 +17,10 @@ Last updated: 2026-08-02 (post-Donski incident).
    - Fail closed: raise, do not trade at stale/unapproved price.
 4. **Maker depth pricing.** Rest on best bid level >= `maker_depth_cents` (2) below
    reference with size >= `maker_min_volume` (100) using full bid/ask ladders.
+   **NORMAL-DISTRIBUTION PEAK (VJ 2026-08-02)**: price at the size-weighted mean
+   cluster of the book, EXCLUDING outliers at the ends of the spectrum (a huge
+   stale bid far below the cluster is a trap — don't chase it). Drop levels >2
+   stddev below the peak, take best remaining.
    Fallback: 50% nudge inside book. Never cross for fills when maker possible.
 5. **Order TTL = min(24h, 0.8 × hours_to_expiry).** Event-aware lifetime, applied
    exchange-side + DB + paper (three places, aligned).
