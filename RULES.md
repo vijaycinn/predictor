@@ -31,6 +31,15 @@ Last updated: 2026-08-02 (post-Donski incident).
      / `ev_calc.price_side`; guard `min_win_prob: 0.50` refuses missing or <50% refs
      (`override_win_floor` only with explicit user confirmation).
    - Sub-50% outcomes are lottery bets — NEVER take them.
+8. **LIVE BET TTL ALIGNED TO SCORE STATE (VJ 2026-08-02).** Tennis live orders:
+   TTL is NOT fixed 60m — it follows how fast the score/odds move:
+   - set 1 early, ~50/50 → 30-60m TTL
+   - mid-match, price drifting → 15-30m
+   - price moved >10c from your limit → CANCEL, re-scan (window gone)
+   - match-point territory (0.80+) → don't chase
+   A stale resting limit in live tennis is dead weight (Cazacu 0.61→0.82 while
+   a 0.40 order sat unfillable, 2026-08-02). Format awareness: men's GS best-of-5,
+   men's non-GS best-of-3, women best-of-3 — score-state edge depends on format.
 
 ## Market selection rules
 

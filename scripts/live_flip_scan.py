@@ -140,6 +140,7 @@ def main():
 
     print(f"[{now_ct:%H:%M} CT] Live flip candidates ({len(rows)} shown, top 15)")
     print("Flip-zone = mid 0.35-0.65, spread <=3c, depth >=200. Place limit 1-2c off.")
+    print("TTL by score state: set1-early 30-60m | mid-match 15-30m | moved>10c from limit = CANCEL")
     print("=" * 78)
     for i, r in enumerate(rows[:15], 1):
         # flip bet = buy the CHEAP side (underdog at <0.50) betting it flips.
@@ -152,10 +153,20 @@ def main():
             side = "NO"
             limit = round(min(1 - r["mid"] - 0.01, 0.40), 2)
         limit = max(limit, 0.01)
+        # TTL from how far price is from limit: gap>10c = dead, 5-10c = 15m, <5c = 30-60m
+        gap = abs(r["mid"] - limit)
+        if gap > 0.10:
+            ttl = "CANCEL/RE-SCAN"
+        elif gap > 0.05:
+            ttl = "15m"
+        elif r["mid"] <= 0.45:
+            ttl = "60m"
+        else:
+            ttl = "30m"
         print(f"{i:>2}. {r['t'][:44]:44s} mid={r['mid']:.2f} spr={r['spread']:.2f} "
               f"vol=${r['vol']:8,.0f}")
         print(f"     {r['q'][:70]}")
-        print(f"     -> {side} @ {limit:.2f} | 30m/60m TTL | fill if price dips")
+        print(f"     -> {side} @ {limit:.2f} | TTL {ttl} | fill if price dips")
 
 
 if __name__ == "__main__":
