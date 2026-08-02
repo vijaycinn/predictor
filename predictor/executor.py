@@ -124,6 +124,9 @@ class LiveExecutor:
         - RAISE GUARD: never pay more than max_price_raise_pct (10%) above the
           approved/reference price (sig.ev_calc.price_side or approved_price).
           Resting BELOW approved is always fine — that's the maker edge.
+        - LIVE FLOOR: live/in-play bets flagged is_live only when current score/
+          status implies >= min_live_win_prob (50%) win probability. <50% = lottery
+          bet, refused (override_live_floor to bypass). No chasing <50c live dogs.
         """
         from .risk import MarginTradingError  # noqa: F401 (margin guard already asserted)
         from . import risk as risk_mod
@@ -137,6 +140,18 @@ class LiveExecutor:
                 raise RuntimeError(
                     f"PRICE BAND GUARD: YES buy limit {float(limit):.3f} > {max_band:.0f}c cap. "
                     f"VJ rule: only 0-{max_band:.0f}c. Re-confirm at a cheaper level or set override_price_band."
+                )
+        # HARD LIVE FLOOR (VJ 2026-08-02): live/in-play bets only when current state
+        # implies >= min_live_win_prob win probability. No lottery bets on <50% outcomes.
+        if sig.get("is_live") and not sig.get("override_live_floor"):
+            min_live = float(self.cfg.get("execution", {}).get("min_live_win_prob", 0.50))
+            # use reference (approved/current) price as the win-prob proxy for YES
+            live_ref = sig.get("approved_price") or sig.get("ev_calc", {}).get("price_side")
+            if live_ref is not None and float(live_ref) < min_live:
+                raise RuntimeError(
+                    f"LIVE FLOOR GUARD: current state implies {float(live_ref):.3f} win prob "
+                    f"< {min_live:.2f}. VJ rule: no lottery bets — live bets need >=50% win "
+                    f"from current score/status. SKIP or set override_live_floor."
                 )
         ticker = sig["condition_id"]
         hours_to_expiry = float(features.get("hours_to_expiry") or 0)

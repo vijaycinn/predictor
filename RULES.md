@@ -22,27 +22,35 @@ Last updated: 2026-08-02 (post-Donski incident).
    exchange-side + DB + paper (three places, aligned).
 6. **$1/trade cap.** `risk.max_trade_usd: 1.0`. No margin ever (code asserts).
    Position cap per config. No stop-loss — ride to resolution.
+7. **LIVE BETS: ≥50% win floor.** Live/in-play bets only when current score/status
+   implies >= `min_live_win_prob` (0.50) win probability. Sub-50% outcomes are
+   lottery bets — NEVER take them (Donski/underdog losses 2026-08-02). Bias must
+   come from the CURRENT MATCH STATE, not hope. Flag sig `is_live`; guard refuses
+   <50% refs (override_live_floor only with explicit user confirmation).
 
 ## Market selection rules
 
-7. **Crypto: ≤1 month to expiry only.** No wild 2-month+ price bets.
+8. **Crypto: ≤1 month to expiry only.** No wild 2-month+ price bets.
    (VJ: "I only am comfortable with crypto that is within a month.")
-8. **Polymarket = sentiment/bias source** (global traders, wider sample than Kalshi).
+9. **Polymarket = sentiment/bias source** (global traders, wider sample than Kalshi).
    Research + Polymarket sentiment drives bias; ≥2% trend counts. Execution venue
    remains Kalshi (Polymarket live needs wallet+gas — not wired).
-9. **Favorite categories**: T20/cricket, crypto (BTC/ETH targets ≤1mo), economic
-   (Fed/CPI/jobs), politics, WTA/tennis. Skip in-play micro-edge chases unless
-   user explicitly calls live shots.
+10. **Favorite categories**: T20/cricket, crypto (BTC/ETH targets ≤1mo), economic
+    (Fed/CPI/jobs), politics, WTA/tennis. Skip in-play micro-edge chases unless
+    user explicitly calls live shots.
+11. **PRICE FILTER ≠ EDGE.** Cheap markets (sub-40c) are NOT automatically tradeable.
+    No research/current-state bias = no trade = SKIP. A 2c YES on a 2% chance is a
+    lottery ticket with no edge, not an opportunity (Filiz/Young/Zhukov losses).
 
 ## Workflow rules
 
-10. **Never claim ready without execution proof** (EXISTS ≠ WORKS). Verify fills
+12. **Never claim ready without execution proof** (EXISTS ≠ WORKS). Verify fills
     exchange-side (`/portfolio/positions` position_fp is ground truth), repair
     local DB (Kalshi returns `executed`, local may say RESTING).
-11. **Every user-picked trade carries the approved price into sig** so guards
+13. **Every user-picked trade carries the approved price into sig** so guards
     have a reference (Donski 0.34→0.90 incident: approved underdog, stale book,
     filled at 0.90 — now blocked by band + raise guards).
-12. **Report blockers immediately.** No hiding failures, no fabricated output.
+14. **Report blockers immediately.** No hiding failures, no fabricated output.
 
 ## Incident log
 
@@ -50,3 +58,7 @@ Last updated: 2026-08-02 (post-Donski incident).
   book repriced to 0.93, order filled at 0.90. Three failures: fresh book used as
   reference, no band check, cancel landed after fill. Fixes: band guard (40c),
   raise guard (10%), limit-only assert, approved-price-in-sig discipline.
+- **2026-08-02 Underdog batch**: 8 sub-40c tennis YES picks placed without
+  research (Filiz 2c, Young 7c, Zhukov 1c, etc.) — all lottery tickets, most
+  resolved worthless. Selection failure: price filter treated as edge. Fix:
+  RULES rule 11 (price ≠ edge) + LIVE FLOOR rule 7 (≥50% win from current state).
