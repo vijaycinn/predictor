@@ -94,9 +94,8 @@ if kalshi_exec:
             f"[ARB:{arb_source[:8]}] {o['net_edge']*100:.2f}% EXECUTABLE K={o['kalshi_ticker']} "
             f"buy {o['buy_venue']}@{o['buy_price']:.3f} sell {o['sell_venue']}@{o['sell_price']:.3f} | {o['title_a'][:35]}"
         )
-elif res.get("opportunities"):
-    top = res["opportunities"][0]
-    out_lines.append(f"[ARB:{arb_source[:8]}] {top['net_edge']*100:.2f}% discovery-only {top['buy_venue']}->{top['sell_venue']} | {top['title_a'][:40]} (no executable leg)")
+# discovery-only arbs (no Kalshi leg = not executable) are NOT delivered —
+# VJ rule: suppress non-actionable noise. Keep quiet unless a tradeable leg exists.
 
 # --- 3. Resolution tracking ---
 for venue, dbfile in (("polymarket", "predictor.db"), ("kalshi", "kalshi.db")):
