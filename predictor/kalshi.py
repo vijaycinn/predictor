@@ -143,9 +143,13 @@ def _auth_request(method: str, path: str, json_body: dict | None = None, retries
 
 def place_order(ticker: str, side: str, count: float, price: float, reduce_only: bool = False,
                 hours_to_expiry: float = 0.0, max_lifetime_hours: float = 24.0) -> dict:
-    """Place a GTC limit order. side: 'YES' -> bid, 'NO' -> ask.
+    """Place a limit order. side: 'YES' -> bid, 'NO' -> ask.
     V2 endpoint: POST /portfolio/events/orders (legacy /portfolio/orders
     deprecated 2026-05-06). Prices are fixed-point dollar strings.
+
+    reduce_only sells (position exits) use IOC — Kalshi rejects reduce_only
+    with GTC ('reduce_only can only be used with IoC orders', hit live
+    2026-08-02). Exits fill at or better than price immediately; no TTL needed.
 
     Order lifetime (VJ rules):
       - max 24h absolute cap, never longer
@@ -155,8 +159,8 @@ def place_order(ticker: str, side: str, count: float, price: float, reduce_only:
     """
     import uuid
     from datetime import datetime, timezone
-    # HARD RULE (VJ 2026-08-02): LIMIT ORDERS ONLY. This function places a GTC
-    # limit order and refuses to construct a market order. price must be a valid
+    # HARD RULE (VJ 2026-08-02): LIMIT ORDERS ONLY. This function places a limit
+    # order and refuses to construct a market order. price must be a valid
     # 0-1 tick; None/out-of-range raises instead of degrading to market.
     if price is None or not (0 < float(price) < 1):
         raise ValueError(f"LIMIT-ONLY enforcement: place_order requires a limit price, got {price!r}")
@@ -172,12 +176,14 @@ def place_order(ticker: str, side: str, count: float, price: float, reduce_only:
         "side": "bid" if side == "YES" else "ask",
         "count": f"{count:.2f}",
         "price": f"{price_tick:.4f}",
-        "time_in_force": "good_till_canceled",
-        "expiration_time": int(datetime.now(timezone.utc).timestamp() + lifetime_h * 3600),
+        "time_in_force": "immediate_or_cancel" if reduce_only else "good_till_canceled",
         "self_trade_prevention_type": "taker_at_cross",
         "post_only": False,
         "reduce_only": reduce_only,
     }
+    if not reduce_only:
+        # IOC rejects expiration timestamp (Kalshi: Cannot_specify_both_IoC_and_expiration_timestamp, hit 2026-08-02)
+        body["expiration_time"] = int(datetime.now(timezone.utc).timestamp() + lifetime_h * 3600)
     return _auth_request("POST", "/portfolio/events/orders", json_body=body)
 
 
