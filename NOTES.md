@@ -30,6 +30,22 @@ Authoritative for analysis. Last updated: 2026-08-02.
 - August seasonal: BTC historically weak month (red every year since 2022, median ~-8%).
 - BTC ~$63k (Aug 2, 2026); ETF outflows $2.16B/30d; crowded longs 96.9% liq ratio.
 
+## Case studies — won trades
+
+### Ribero vs Rejchtman — Plovdiv 2 Q1 (2026-08-02, WON +$1.20)
+
+- Entry: RIB YES 2 @ **0.40** (maker, no fee), placed by VJ on app 19:08Z.
+- State at entry: Ribero up a set 6-4, down a break in set 2 (1-4*).
+- Independent prob: Ribero ~0.56 (better form 49% vs 31%, rank 733 vs 938,
+  Bo3 — up a set = strong).
+- Resolved: YES @ 1.00. P&L +$1.20 (2 × $0.60) on $0.80 stake.
+- **Lesson**: flip bets qualify when the LIMIT rests <=40c even if fair value
+  is higher. Band gate checks limit price, NOT fair value. Ribero fair ~0.56,
+  bought at 0.40 = 16c of edge. The flip scanner must surface candidates where
+  fair (from score+form) >=0.50 AND limit can rest <=0.40 — buy 56c of
+  probability at 40c. VJ's call beat Mando's SKIP (Mando skipped on band
+  confusion; the fill was inside band the whole time).
+
 ## Evaluation checklist (from memory index)
 
 - Rules: RULES.md (limit-only, 0-40c band, ≤10% raise, ≥50% win floor, crypto ≤1mo,

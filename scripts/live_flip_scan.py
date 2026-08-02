@@ -125,12 +125,19 @@ def main():
             v = _vol(m)
             if v < 2000:
                 continue
-            # flip score: closeness to 0.50 + volume + tightness
+            # Ribero pattern (2026-08-02 WON): fair value >=0.50 while the
+            # buyable side rests <=0.40. Band gate checks LIMIT price, not fair
+            # value — so a 56c fair bet bought at 40c = 16c edge.
+            cheap_side = min(mid, 1 - mid)
+            buyable = cheap_side <= 0.40  # can rest limit at/under band
+            # flip score: closeness to 0.50 + volume + tightness + buyability
             flip_score = (1 - abs(mid - 0.50)) * min(v, 500000) / 500000
+            if buyable:
+                flip_score += 0.15  # boost: rest <=40c, fair may be higher
             rows.append({
                 "t": m["ticker"], "q": m.get("title", ""), "mid": mid, "bid": bid,
                 "ask": ask, "spread": spread, "vol": v, "depth": depth,
-                "score": flip_score,
+                "score": flip_score, "buyable": buyable, "cheap_side": cheap_side,
             })
 
     rows.sort(key=lambda x: x["score"], reverse=True)
@@ -140,6 +147,7 @@ def main():
 
     print(f"[{now_ct:%H:%M} CT] Live flip candidates ({len(rows)} shown, top 15)")
     print("Flip-zone = mid 0.35-0.65, spread <=3c, depth >=200. Place limit 1-2c off.")
+    print("[BUYABLE] = cheap side <=40c — rest limit at/under band, fair may be higher (Ribero pattern).")
     print("TTL by score state: set1-early 30-60m | mid-match 15-30m | moved>10c from limit = CANCEL")
     print("=" * 78)
     for i, r in enumerate(rows[:15], 1):
@@ -163,8 +171,9 @@ def main():
             ttl = "60m"
         else:
             ttl = "30m"
+        tag = " [BUYABLE]" if r.get("buyable") else ""
         print(f"{i:>2}. {r['t'][:44]:44s} mid={r['mid']:.2f} spr={r['spread']:.2f} "
-              f"vol=${r['vol']:8,.0f}")
+              f"vol=${r['vol']:8,.0f}{tag}")
         print(f"     {r['q'][:70]}")
         print(f"     -> {side} @ {limit:.2f} | TTL {ttl} | fill if price dips")
 
