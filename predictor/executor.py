@@ -201,7 +201,8 @@ def reconcile_orders(conn, cfg: dict) -> list[dict]:
                     remote = None
             if remote:
                 rstatus = str(remote.get("status", "")).lower()
-                if rstatus == "filled":
+                # Kalshi V2 returns "executed" for filled orders (observed live)
+                if rstatus in ("filled", "executed"):
                     fill = float(remote.get("average_fill_price") or remote.get("price") or t["limit_price"])
                     filled = float(remote.get("filled_count") or t["requested_size"] or 0)
                     db.update_trade(conn, t["id"], {
@@ -212,7 +213,10 @@ def reconcile_orders(conn, cfg: dict) -> list[dict]:
                 elif rstatus in ("canceled", "cancelled", "expired"):
                     db.update_trade(conn, t["id"], {"status": "CANCELED", "order_status": rstatus})
                     events.append({"trade_id": t["id"], "event": "canceled_remote"})
-            # TTL expiry → cancel
+                if rstatus in ("filled", "executed", "canceled", "cancelled", "expired"):
+                    # terminal state — never TTL-cancel a settled order
+                    continue
+            # TTL expiry → cancel (only for orders still resting remotely or unknown)
             ttl = t.get("ttl_expires_at")
             ttl = ttl if ttl is not None else (now + 3600)
             if ttl < now:
