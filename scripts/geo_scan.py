@@ -83,7 +83,17 @@ def kalshi_get(path, params=None):
         return None
 
 def main():
-    now_ct = datetime.now(timezone.utc).astimezone().strftime("%H:%M")
+    # Rule 18: geo analysis ONLY 7pm-8pm CT. Silent otherwise (watchdog pattern).
+    now = datetime.now().astimezone()
+    try:
+        from zoneinfo import ZoneInfo
+        ct = now.astimezone(ZoneInfo("America/Chicago"))
+    except Exception:
+        ct = now
+    if not (19 <= ct.hour < 20):
+        # outside window — silent (no stdout = no delivery for no_agent cron)
+        return
+    now_ct = ct.strftime("%H:%M")
     tweets = fetch_feed(20)
     if not tweets:
         print(f"[{now_ct} CT] GEO-SCAN: DeItaone feed unavailable (xurl/auth?)")
