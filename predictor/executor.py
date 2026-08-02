@@ -131,54 +131,12 @@ class LiveExecutor:
           valid source. Missing or <50% ref = refused (override_win_floor only
           with explicit user confirmation).
         """
-        from .risk import MarginTradingError  # noqa: F401 (margin guard already asserted)
+        from .risk import MarginTradingError  # noqa: F401 (margin guard asserted inside pre_flight)
         from . import risk as risk_mod
-        if limit is None or not (0 < float(limit) < 1):
-            raise RuntimeError(f"LIMIT-ONLY enforcement: refusing order without valid limit price (got {limit!r})")
-        # HARD BAND (VJ 2026-08-02): max_buy_price_cents on BUY YES. No band check
-        # for NO (buying NO at high price = buying YES cheap) or reduce-only closes.
-        if sig.get("side") == "YES" and not sig.get("override_price_band"):
-            max_band = float(self.cfg.get("execution", {}).get("max_buy_price_cents", 40))
-            if float(limit) > max_band / 100.0:
-                raise RuntimeError(
-                    f"PRICE BAND GUARD: YES buy limit {float(limit):.3f} > {max_band:.0f}c cap. "
-                    f"VJ rule: only 0-{max_band:.0f}c. Re-confirm at a cheaper level or set override_price_band."
-                )
-        # HARD WIN FLOOR (VJ 2026-08-02): NEVER bet if outcome probability < 50%.
-        # Applies to ALL YES buys (not just live). The probability must be
-        # independently established — Polymarket cross-venue price (arb) or
-        # verifiable research source — and carried in sig.approved_price /
-        # ev_calc.price_side. Kalshi's own book alone is NOT a valid source
-        # (Kalshi prices can be thin/stale; Donski 0.34->0.90 proved it).
-        if sig.get("side") == "YES" and not sig.get("override_win_floor"):
-            min_win = float(self.cfg.get("execution", {}).get("min_win_prob", 0.50))
-            win_ref = sig.get("approved_price") or sig.get("ev_calc", {}).get("price_side")
-            if win_ref is None:
-                raise RuntimeError(
-                    f"WIN FLOOR GUARD: no independent probability provided. VJ rule: "
-                    f"NEVER bet without >= {min_win:.0%} outcome prob from Polymarket/verifiable "
-                    f"source. Pass sig.approved_price or ev_calc.price_side from an independent venue."
-                )
-            if float(win_ref) < min_win:
-                raise RuntimeError(
-                    f"WIN FLOOR GUARD: outcome prob {float(win_ref):.3f} < {min_win:.0%}. "
-                    f"VJ rule: NEVER bet if outcome probability < 50%. "
-                    f"SKIP or set override_win_floor (explicit user confirmation only)."
-                )
+        # CONSOLIDATED GATE (VJ 2026-08-02): every execution path runs ALL rules.
+        risk_mod.pre_flight_check(sig, limit, self.cfg)
         ticker = sig["condition_id"]
         hours_to_expiry = float(features.get("hours_to_expiry") or 0)
-        # raise guard vs approved/reference price (VJ 2026-08-02): NEVER pay more
-        # than max_price_raise_pct above approved. Below approved is always fine (maker).
-        ref = sig.get("ev_calc", {}).get("price_side") or sig.get("approved_price")
-        if ref is not None:
-            max_raise_pct = float(self.cfg.get("execution", {}).get("max_price_raise_pct", 10))
-            cap = float(ref) * (1.0 + max_raise_pct / 100.0)
-            if float(limit) > cap:
-                raise RuntimeError(
-                    f"PRICE RAISE GUARD: approved {float(ref):.3f}, live limit {float(limit):.3f} "
-                    f"is >{max_raise_pct:.0f}% above approved (cap {cap:.3f}). "
-                    f"Refusing to overpay. Re-confirm or rest cheaper."
-                )
         resp = self.kalshi.place_order(ticker, sig["side"], size, limit, hours_to_expiry=hours_to_expiry)
         order = resp.get("order") or resp
         order_id = order.get("order_id") or resp.get("order_id")

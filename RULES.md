@@ -55,6 +55,30 @@ Last updated: 2026-08-02 (post-Donski incident).
     have a reference (Donski 0.34→0.90 incident: approved underdog, stale book,
     filled at 0.90 — now blocked by band + raise guards).
 14. **Report blockers immediately.** No hiding failures, no fabricated output.
+15. **CONSOLIDATED PRE-FLIGHT GATE.** `risk.pre_flight_check(sig, limit, cfg)`
+    runs ALL rules (limit-only, win floor, band, raise, no-margin) on every
+    execution path. No path may skip a rule. Additive guard code in executors is
+    discouraged — single source of truth in risk.py.
+16. **SUGGESTION SUPPRESSION.** Markets with mid/prob < `min_win_prob` (0.50) are
+    NEVER offered in scan shortlists or pick lists. If the rule says don't take
+    it, don't suggest it — lottery tickets are not "options" (underdog batch
+    2026-08-02: sub-40c list offered as choices, all lost).
+
+## Retrospective — 2026-08-02 losses (drives rules above)
+
+| Bet | Paid | State now | Root cause |
+|-----|------|-----------|------------|
+| Donski YES | 0.90 | 0.00 | Stale book repriced in-play; no price guard; no independent prob |
+| Zhukov YES | 0.01 | 0.00 | Lottery: 1% outcome, no research |
+| Filiz YES | 0.02 | 0.00 | Lottery: 2% outcome, no research |
+| Young YES | 0.07 | 0.00 | Lottery: 7% outcome, no research |
+| van Sambeek YES | 0.05 | 0.00 | Lottery: 5% outcome, no research |
+| Majchrzak YES | 0.30 | 0.40 | Still live; sub-50% at entry anyway |
+
+**Pattern**: every loser was <50% outcome probability (or stale-priced). No
+independent probability source was consulted before placement. Suggestions were
+made on price filter alone. Fixes: rule 7 (win floor all bets), rule 11 (price ≠
+edge), rule 15 (pre-flight gate), rule 16 (suggestion suppression).
 
 ## Incident log
 

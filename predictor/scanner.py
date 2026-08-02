@@ -264,6 +264,14 @@ def run_scan(conn, cfg: dict, llm_overrides: dict | None = None, verbose: bool =
     )
     shortlist = (edge_cands + liquid_cands)[:shortlist_max]
 
+    # SUGGESTION SUPPRESSION (VJ 2026-08-02, post-loss retrospective): never
+    # SUGGEST a bet whose outcome prob < min_win_prob. If we shouldn't take it,
+    # we shouldn't offer it either — lottery tickets are not options. mid < 0.50
+    # means the market itself prices <50% (no edge, no research case).
+    min_win = cfg.get("execution", {}).get("min_win_prob", 0.50)
+    shortlist = [e for e in shortlist if (e.get("mid") or 0) >= min_win]
+    top = [t for t in top if t.get("market_price", t.get("prob_yes", 0)) >= min_win]
+
     return {
         "ts": time.time(),
         "venue": cfg.get("venue", "polymarket"),

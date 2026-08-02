@@ -22,6 +22,54 @@ def assert_no_margin(cfg: dict) -> None:
         )
 
 
+def pre_flight_check(sig: dict, limit: float, cfg: dict) -> None:
+    """CONSOLIDATED pre-execution gate (VJ 2026-08-02, post-loss retrospective).
+
+    Every execution path (scan approve, direct user pick, cron) MUST run this
+    before placing. Single consistent rule set — no path can skip a rule:
+      1. LIMIT ONLY: limit must be a valid 0<p<1 price. No market orders ever.
+      2. WIN FLOOR (all bets): independent outcome prob >= min_win_prob (0.50),
+         sourced from Polymarket cross-venue or verifiable research, carried in
+         sig.approved_price / ev_calc.price_side. Kalshi's own book is NOT valid.
+      3. PRICE BAND: YES buys <= max_buy_price_cents (40c).
+      4. RAISE GUARD: limit <= approved * (1 + max_price_raise_pct/100).
+      5. NO MARGIN: margin_trading must be false.
+    Raises RuntimeError with the failing rule; caller must NOT place the order.
+    """
+    assert_no_margin(cfg)
+    exec_cfg = cfg.get("execution", {})
+    if limit is None or not (0 < float(limit) < 1):
+        raise RuntimeError(f"LIMIT-ONLY: no valid limit price (got {limit!r}). No market orders ever.")
+    if sig.get("side") == "YES" and not sig.get("override_win_floor"):
+        min_win = float(exec_cfg.get("min_win_prob", 0.50))
+        win_ref = sig.get("approved_price") or sig.get("ev_calc", {}).get("price_side")
+        if win_ref is None:
+            raise RuntimeError(
+                f"WIN FLOOR: no independent probability provided (need >= {min_win:.0%} from "
+                f"Polymarket/verifiable research). Kalshi's own book is NOT a valid source."
+            )
+        if float(win_ref) < min_win:
+            raise RuntimeError(
+                f"WIN FLOOR: outcome prob {float(win_ref):.3f} < {min_win:.0%}. "
+                f"VJ rule: NEVER bet if outcome probability < 50%."
+            )
+    if sig.get("side") == "YES" and not sig.get("override_price_band"):
+        max_band = float(exec_cfg.get("max_buy_price_cents", 40))
+        if float(limit) > max_band / 100.0:
+            raise RuntimeError(
+                f"PRICE BAND: YES limit {float(limit):.3f} > {max_band:.0f}c cap."
+            )
+    ref = sig.get("ev_calc", {}).get("price_side") or sig.get("approved_price")
+    if ref is not None:
+        max_raise_pct = float(exec_cfg.get("max_price_raise_pct", 10))
+        cap = float(ref) * (1.0 + max_raise_pct / 100.0)
+        if float(limit) > cap:
+            raise RuntimeError(
+                f"PRICE RAISE: limit {float(limit):.3f} > {max_raise_pct:.0f}% above approved "
+                f"{float(ref):.3f} (cap {cap:.3f}). Refusing to overpay."
+            )
+
+
 def check_filters(features: dict, sig: dict, cfg: dict) -> tuple[bool, str]:
     """Return (pass, reason_if_blocked)."""
     exec_cfg = cfg.get("execution", {})
