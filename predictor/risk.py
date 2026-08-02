@@ -141,7 +141,12 @@ def check_risk_limits(conn, sig: dict, size_dollars: float, cfg: dict) -> tuple[
 
 def limit_price(sig: dict, features: dict, cfg: dict) -> float:
     """Pick limit price: maker-friendly by default, nudge inside book by aggressiveness.
-    NO side trades at 1 - YES book (Kalshi/Polymarket binary equivalence)."""
+    NO side trades at 1 - YES book (Kalshi/Polymarket binary equivalence).
+
+    Maker depth strategy (VJ 2026-08-02): when prefer_maker, look for a bid level
+    >= maker_depth_cents below last trade (fallback: best ask) with size >=
+    maker_min_volume in the full ladder. Rest there and collect a better fill if
+    price comes to us. Falls back to old 50% nudge when no qualifying level."""
     ev_calc = sig.get("ev_calc", {})
     side = sig.get("side")
     mid = features.get("mid") or ev_calc.get("price_side")
@@ -151,6 +156,11 @@ def limit_price(sig: dict, features: dict, cfg: dict) -> float:
     if side == "YES":
         best_ask = features.get("best_ask")
         if prefer_maker and best_ask is not None:
+            maker = _maker_level(features.get("bid_ladder") or [], best_ask,
+                                 exec_cfg.get("maker_depth_cents", 2),
+                                 exec_cfg.get("maker_min_volume", 100))
+            if maker is not None:
+                return round(maker, 3)
             return round(min(mid + (best_ask - mid) * 0.5, best_ask), 3)
         return round(best_ask if best_ask is not None else mid, 3)
     else:  # NO — buy NO, so price = 1 - YES book
@@ -158,5 +168,31 @@ def limit_price(sig: dict, features: dict, cfg: dict) -> float:
         no_ask = (1.0 - best_bid) if best_bid is not None else None
         no_mid = 1.0 - mid
         if prefer_maker and no_ask is not None:
+            # ask_ladder == no_dollars == resting NO bids directly
+            no_ladder = features.get("ask_ladder") or []
+            maker = _maker_level(no_ladder, no_ask,
+                                 exec_cfg.get("maker_depth_cents", 2),
+                                 exec_cfg.get("maker_min_volume", 100))
+            if maker is not None:
+                return round(maker, 3)
             return round(min(no_mid + (no_ask - no_mid) * 0.5, no_ask), 3)
         return round(no_ask if no_ask is not None else no_mid, 3)
+
+
+def _maker_level(ladder: list, ref_price: float, depth_cents: int, min_vol: float) -> float | None:
+    """Best resting level >= depth_cents below ref_price with size >= min_vol.
+    Ladder is [[price, size], ...] ascending; scan from top of book down."""
+    if not ladder or ref_price is None:
+        return None
+    thresh = round(ref_price - depth_cents / 100.0, 3)
+    # ladder ascending -> iterate reversed (deep -> best), keep best (highest) qualifying
+    best = None
+    for p, s in ladder:
+        try:
+            price = float(p)
+            size = float(s)
+        except (TypeError, ValueError):
+            continue
+        if price <= thresh and size >= min_vol:
+            best = price if best is None else max(best, price)
+    return best

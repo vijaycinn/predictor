@@ -32,6 +32,9 @@ execution:
   min_edge: 0.03             # min |estimated_prob - price| to act (3 cents)
   ev_min_net: 0.02           # min EV_net per share after fees/slippage
   prefer_maker: true         # rest limit orders when possible
+  maker_depth_cents: 2       # rest >=2c below ref price (VJ 2026-08-02)
+  maker_min_volume: 100      # min contracts at chosen maker level
+  max_price_deviation_cents: 5  # fail closed if live price deviates from approved (VJ 2026-08-02)
   aggressiveness: 0.5        # 0 = best price only, 1 = cross spread aggressively
   stop_loss: false           # NO STOP-LOSS (VJ): high-risk/high-reward events
 
@@ -39,7 +42,7 @@ risk:
   capital_usd: 1000
   max_trade_usd: 1.0        # LIVE cap: $1 per trade (VJ set 2026-08-01)
   margin_trading: false     # NO MARGIN TRADING EVER — code asserts this stays false (all modes)
-  max_open_positions: 2     # cap on concurrent open positions (VJ set 2026-08-01)
+  max_open_positions: 16    # raised 2026-08-02: 7 book + 8 tennis underdog + headroom
   max_per_trade_frac: 0.20
   max_notional_frac: 0.60
   max_daily_loss_usd: 50

@@ -155,6 +155,11 @@ def place_order(ticker: str, side: str, count: float, price: float, reduce_only:
     """
     import uuid
     from datetime import datetime, timezone
+    # HARD RULE (VJ 2026-08-02): LIMIT ORDERS ONLY. This function places a GTC
+    # limit order and refuses to construct a market order. price must be a valid
+    # 0-1 tick; None/out-of-range raises instead of degrading to market.
+    if price is None or not (0 < float(price) < 1):
+        raise ValueError(f"LIMIT-ONLY enforcement: place_order requires a limit price, got {price!r}")
     # Kalshi tick size is 1c for these markets; off-tick prices are rejected
     price_tick = round(price * 100) / 100.0
     lifetime_h = max_lifetime_hours
@@ -337,7 +342,9 @@ def normalize_market(m: dict) -> dict:
 
 
 def fetch_orderbook(ticker: str) -> dict:
-    """Orderbook: yes/no bids only (binary equivalence derives asks)."""
+    """Orderbook: yes/no bids only (binary equivalence derives asks).
+    Full ladders included (bid_ladder/ask_ladder) for maker depth-aware
+    limit pricing (VJ 2026-08-02)."""
     if not ticker:
         return {}
     d = get_json(f"/markets/{ticker}/orderbook")
@@ -349,6 +356,8 @@ def fetch_orderbook(ticker: str) -> dict:
     best_ask = (1.0 - best_no_bid) if best_no_bid is not None else None
     def depth(levels, n=5):
         return sum(_to_float(l[1]) for l in levels[-n:])
+    def ladder(levels):
+        return [[_to_float(l[0]), _to_float(l[1])] for l in levels]
     return {
         "best_bid": best_bid,
         "best_ask": best_ask,
@@ -356,6 +365,8 @@ def fetch_orderbook(ticker: str) -> dict:
         "ask_depth": depth(no_bids),
         "top_bid_size": _to_float(yes_bids[-1][1]) if yes_bids else 0.0,
         "top_ask_size": _to_float(no_bids[-1][1]) if no_bids else 0.0,
+        "bid_ladder": ladder(yes_bids),
+        "ask_ladder": ladder(no_bids),
         "last_trade_price": None,
         "min_order_size": 1.0,
         "tick_size": 0.01,

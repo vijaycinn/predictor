@@ -113,10 +113,32 @@ class LiveExecutor:
         self.kalshi = kalshi
 
     def execute(self, sig: dict, size: float, limit: float, features: dict) -> dict:
-        """Place real GTC limit order on Kalshi. Returns local trade record."""
+        """Place real GTC limit order on Kalshi. Returns local trade record.
+
+        HARD RULES (VJ 2026-08-02):
+        - LIMIT ORDERS ONLY. No market orders, ever. limit must be a positive
+          finite price; missing/None limit raises (never converts to market).
+        - Price deviation guard: if sig carries an approved/reference price
+          (ev_calc.price_side or approved_price) and the live limit deviates by
+          more than max_price_deviation_cents, FAIL CLOSED — do not trade at a
+          price the user did not sign off on (Donski incident: approved 0.34,
+          stale book repriced to 0.93, order filled at 0.90).
+        """
         from .risk import MarginTradingError  # noqa: F401 (margin guard already asserted)
+        from . import risk as risk_mod
+        if limit is None or not (0 < float(limit) < 1):
+            raise RuntimeError(f"LIMIT-ONLY enforcement: refusing order without valid limit price (got {limit!r})")
         ticker = sig["condition_id"]
         hours_to_expiry = float(features.get("hours_to_expiry") or 0)
+        # deviation guard vs approved/reference price (fail closed)
+        ref = sig.get("ev_calc", {}).get("price_side") or sig.get("approved_price")
+        if ref is not None:
+            max_dev = float(self.cfg.get("execution", {}).get("max_price_deviation_cents", 5))
+            if abs(float(limit) - float(ref)) > max_dev / 100.0:
+                raise RuntimeError(
+                    f"PRICE DEVIATION GUARD: approved {float(ref):.3f}, live limit {float(limit):.3f} "
+                    f"(>{max_dev}c). Refusing stale-price trade. Re-scan/re-confirm."
+                )
         resp = self.kalshi.place_order(ticker, sig["side"], size, limit, hours_to_expiry=hours_to_expiry)
         order = resp.get("order") or resp
         order_id = order.get("order_id") or resp.get("order_id")

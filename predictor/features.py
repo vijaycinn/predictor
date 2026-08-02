@@ -98,6 +98,8 @@ def build_features(
         "price_samples": len(prices),
         "bid_depth": bid_depth,
         "ask_depth": ask_depth,
+        "bid_ladder": book.get("bid_ladder") or [],
+        "ask_ladder": book.get("ask_ladder") or [],
         "depth_total": depth_total,
         "imbalance": imbalance,
         "top_bid_size": book.get("top_bid_size", 0.0),
