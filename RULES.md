@@ -76,6 +76,12 @@ Last updated: 2026-08-02 (post-Donski incident).
     NEVER offered in scan shortlists or pick lists. If the rule says don't take
     it, don't suggest it — lottery tickets are not "options" (underdog batch
     2026-08-02: sub-40c list offered as choices, all lost).
+17. **GEOPOLITICAL UPDATES — DeItaone feed (VJ 2026-08-02).** For geopolitical /
+    macro updates that move oil, gas, Fed, or election markets, rely on the
+    latest tweets from https://x.com/DeItaone (sorted newest). Source of truth
+    for breaking geo/macro news. Fallback: web_extract on the profile. Applies
+    to all macro-news-driven analysis. xurl CLI not installed yet — fetch via
+    web_extract or install xurl when access needed.
 
 ## Retrospective — 2026-08-02 losses (drives rules above)
 
