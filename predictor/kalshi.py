@@ -142,7 +142,7 @@ def _auth_request(method: str, path: str, json_body: dict | None = None, retries
 
 
 def place_order(ticker: str, side: str, count: float, price: float, reduce_only: bool = False,
-                hours_to_expiry: float = 0.0, max_lifetime_hours: float = 24.0) -> dict:
+                hours_to_expiry: float = 0.0, max_lifetime_hours: float = 1.0) -> dict:
     """Place a limit order. side: 'YES' -> bid, 'NO' -> ask.
     V2 endpoint: POST /portfolio/events/orders (legacy /portfolio/orders
     deprecated 2026-05-06). Prices are fixed-point dollar strings.
@@ -152,10 +152,11 @@ def place_order(ticker: str, side: str, count: float, price: float, reduce_only:
     2026-08-02). Exits fill at or better than price immediately; no TTL needed.
 
     Order lifetime (VJ rules):
+      - DEFAULT 1 HOUR (VJ 2026-08-02): resting orders default to 1h expiry
+        unless VJ explicitly overrides — stale resting orders are dead weight
       - max 24h absolute cap, never longer
       - leave >= 20% of the event's remaining time: lifetime <= 0.8 * hours_to_expiry
         (critical for short-timed events — a 24h order on a 5h event is invalid)
-      - unknown event time -> default 24h cap
     """
     import uuid
     from datetime import datetime, timezone

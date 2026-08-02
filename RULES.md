@@ -24,8 +24,12 @@ Last updated: 2026-08-02 (post-Donski incident).
    bait; the wall of size is the real lean. Drop levels >2 stddev from the
    peak, pick the level closest to the volume-weighted mean (ties → cheaper).
    Fallback: 50% nudge inside book. Never cross for fills when maker possible.
-5. **Order TTL = min(24h, 0.8 × hours_to_expiry).** Event-aware lifetime, applied
-   exchange-side + DB + paper (three places, aligned).
+5. **Order TTL — DEFAULT 1 HOUR (VJ 2026-08-02), unless VJ overrides.** Resting
+   orders default to **1 hour expiry** (`max_lifetime_hours: 1`) — the stale
+   resting order is dead weight, re-evaluate often. VJ explicit instructions
+   (e.g. "1h", "24h", "until close") override. Never exceed 24h absolute cap,
+   and leave >= 20% of the event's remaining time: lifetime <= 0.8 ×
+   hours_to_expiry. Long-dated research bets may extend on VJ instruction.
 6. **$1/trade cap.** `risk.max_trade_usd: 1.0`. No margin ever (code asserts).
    Position cap per config. No stop-loss — ride to resolution.
 7. **NEVER BET IF OUTCOME PROBABILITY < 50%.** Applies to ALL bets (not just live).

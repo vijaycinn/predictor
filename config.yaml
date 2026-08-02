@@ -25,7 +25,7 @@ fees:
   gas_per_trade_usd: 0.0
 
 execution:
-  order_ttl_hours: 24           # max order lifetime — VJ rule: NOT more than 24h (hard-capped in code too)
+  order_ttl_hours: 1            # DEFAULT order TTL = 1h (VJ 2026-08-02) — stale resting orders are dead weight; VJ explicit instruction overrides
   max_spread: 0.04           # skip markets wider than this
   min_hours_to_expiry: 2
   max_days_to_expiry: 400    # politics/econ run long-dated
