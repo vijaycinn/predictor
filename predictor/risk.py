@@ -40,19 +40,34 @@ def pre_flight_check(sig: dict, limit: float, cfg: dict) -> None:
     exec_cfg = cfg.get("execution", {})
     if limit is None or not (0 < float(limit) < 1):
         raise RuntimeError(f"LIMIT-ONLY: no valid limit price (got {limit!r}). No market orders ever.")
-    if sig.get("side") == "YES" and not sig.get("override_win_floor"):
+    if not sig.get("override_win_floor"):
         min_win = float(exec_cfg.get("min_win_prob", 0.50))
-        win_ref = sig.get("approved_price") or sig.get("ev_calc", {}).get("price_side")
-        if win_ref is None:
-            raise RuntimeError(
-                f"WIN FLOOR: no independent probability provided (need >= {min_win:.0%} from "
-                f"Polymarket/verifiable research). Kalshi's own book is NOT a valid source."
-            )
-        if float(win_ref) < min_win:
-            raise RuntimeError(
-                f"WIN FLOOR: outcome prob {float(win_ref):.3f} < {min_win:.0%}. "
-                f"VJ rule: NEVER bet if outcome probability < 50%."
-            )
+        if sig.get("side") == "YES":
+            win_ref = sig.get("approved_price") or sig.get("ev_calc", {}).get("price_side")
+            if win_ref is None:
+                raise RuntimeError(
+                    f"WIN FLOOR: no independent probability provided (need >= {min_win:.0%} from "
+                    f"Polymarket/verifiable research). Kalshi's own book is NOT a valid source."
+                )
+            if float(win_ref) < min_win:
+                raise RuntimeError(
+                    f"WIN FLOOR: outcome prob {float(win_ref):.3f} < {min_win:.0%}. "
+                    f"VJ rule: NEVER bet if outcome probability < 50%."
+                )
+        elif sig.get("side") == "NO":
+            # NO side: independent prob of the NO outcome must be >= min_win.
+            # sig.approved_price carries the independent NO prob (1 - indep YES).
+            no_ref = sig.get("approved_price")
+            if no_ref is None:
+                raise RuntimeError(
+                    f"WIN FLOOR (NO side): no independent NO probability provided "
+                    f"(need >= {min_win:.0%} from Polymarket/verifiable research)."
+                )
+            if float(no_ref) < min_win:
+                raise RuntimeError(
+                    f"WIN FLOOR (NO side): NO outcome prob {float(no_ref):.3f} < {min_win:.0%}. "
+                    f"VJ rule: NEVER bet if outcome probability < 50%."
+                )
     if sig.get("side") == "YES" and not sig.get("override_price_band"):
         max_band = float(exec_cfg.get("max_buy_price_cents", 40))
         if float(limit) > max_band / 100.0:
