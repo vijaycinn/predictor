@@ -246,12 +246,15 @@ def _maker_level(ladder: list, ref_price: float, depth_cents: int, min_vol: floa
     """Best resting level >= depth_cents below ref_price with size >= min_vol.
     Ladder is [[price, size], ...] ascending; scan from top of book down.
 
-    OUTLIER FILTER (VJ 2026-08-02): choose the NORMAL DISTRIBUTION PEAK of the
-    order book, excluding outliers at the ends of the spectrum. A single huge
-    bid far below the main cluster (e.g. 3000 contracts at 0.16 when the book
-    peaks at 0.17-0.18) is a stale/trap level — do NOT chase it. Price where
-    the bulk of volume concentrates: size-weighted mean of qualifying levels,
-    drop levels more than 2 stddev below that peak, return best remaining.
+    VOLUME-PEAK RULE (VJ 2026-08-02): ALWAYS follow the volume — the market
+    leans where the money sits, not where market makers bait. Choose the
+    level at the size-weighted center of mass of the qualifying cluster
+    (the collective intelligence), NOT the highest fillable level. A thin
+    bid at the top of the book is bait; the wall of size is the real lean.
+
+    Implementation: compute size-weighted mean of qualifying levels, then
+    return the level CLOSEST to that mean (the mode of the distribution).
+    Exclude levels more than 2 stddev from the peak (tail outliers).
     """
     if not ladder or ref_price is None:
         return None
@@ -269,17 +272,19 @@ def _maker_level(ladder: list, ref_price: float, depth_cents: int, min_vol: floa
     if not levels:
         return None
 
-    # normal-distribution peak: size-weighted mean + stddev of the cluster
+    # volume peak: size-weighted mean + stddev of the cluster
     total = sum(s for _, s in levels)
     mean = sum(p * s for p, s in levels) / total
     var = sum(s * (p - mean) ** 2 for p, s in levels) / total
     std = var ** 0.5 if var > 0 else 0.0
 
-    # exclude outliers at the cheap end of the spectrum (>2 stddev below peak)
+    # exclude tail outliers (>2 stddev from peak)
     floor = mean - 2.0 * std if std > 0 else mean
-    best = None
-    for price, size in levels:
-        if price < floor:
-            continue  # tail outlier — ignore (stale/trap bid)
-        best = price if best is None else max(best, price)
-    return best
+    keep = [(p, s) for p, s in levels if p >= floor]
+    if not keep:
+        keep = levels
+
+    # FOLLOW THE MONEY: pick the level closest to the volume-weighted mean.
+    # Ties -> prefer the cheaper level (more edge for us as maker).
+    best = min(keep, key=lambda ps: (abs(ps[0] - mean), ps[0]))
+    return best[0]
