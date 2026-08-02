@@ -118,26 +118,39 @@ class LiveExecutor:
         HARD RULES (VJ 2026-08-02):
         - LIMIT ORDERS ONLY. No market orders, ever. limit must be a positive
           finite price; missing/None limit raises (never converts to market).
-        - Price deviation guard: if sig carries an approved/reference price
-          (ev_calc.price_side or approved_price) and the live limit deviates by
-          more than max_price_deviation_cents, FAIL CLOSED — do not trade at a
-          price the user did not sign off on (Donski incident: approved 0.34,
+        - PRICE BAND: never buy YES above max_buy_price_cents (40c) unless
+          override_price_band set (Donski incident: approved 0.34 underdog,
           stale book repriced to 0.93, order filled at 0.90).
+        - RAISE GUARD: never pay more than max_price_raise_pct (10%) above the
+          approved/reference price (sig.ev_calc.price_side or approved_price).
+          Resting BELOW approved is always fine — that's the maker edge.
         """
         from .risk import MarginTradingError  # noqa: F401 (margin guard already asserted)
         from . import risk as risk_mod
         if limit is None or not (0 < float(limit) < 1):
             raise RuntimeError(f"LIMIT-ONLY enforcement: refusing order without valid limit price (got {limit!r})")
+        # HARD BAND (VJ 2026-08-02): max_buy_price_cents on BUY YES. No band check
+        # for NO (buying NO at high price = buying YES cheap) or reduce-only closes.
+        if sig.get("side") == "YES" and not sig.get("override_price_band"):
+            max_band = float(self.cfg.get("execution", {}).get("max_buy_price_cents", 40))
+            if float(limit) > max_band / 100.0:
+                raise RuntimeError(
+                    f"PRICE BAND GUARD: YES buy limit {float(limit):.3f} > {max_band:.0f}c cap. "
+                    f"VJ rule: only 0-{max_band:.0f}c. Re-confirm at a cheaper level or set override_price_band."
+                )
         ticker = sig["condition_id"]
         hours_to_expiry = float(features.get("hours_to_expiry") or 0)
-        # deviation guard vs approved/reference price (fail closed)
+        # raise guard vs approved/reference price (VJ 2026-08-02): NEVER pay more
+        # than max_price_raise_pct above approved. Below approved is always fine (maker).
         ref = sig.get("ev_calc", {}).get("price_side") or sig.get("approved_price")
         if ref is not None:
-            max_dev = float(self.cfg.get("execution", {}).get("max_price_deviation_cents", 5))
-            if abs(float(limit) - float(ref)) > max_dev / 100.0:
+            max_raise_pct = float(self.cfg.get("execution", {}).get("max_price_raise_pct", 10))
+            cap = float(ref) * (1.0 + max_raise_pct / 100.0)
+            if float(limit) > cap:
                 raise RuntimeError(
-                    f"PRICE DEVIATION GUARD: approved {float(ref):.3f}, live limit {float(limit):.3f} "
-                    f"(>{max_dev}c). Refusing stale-price trade. Re-scan/re-confirm."
+                    f"PRICE RAISE GUARD: approved {float(ref):.3f}, live limit {float(limit):.3f} "
+                    f"is >{max_raise_pct:.0f}% above approved (cap {cap:.3f}). "
+                    f"Refusing to overpay. Re-confirm or rest cheaper."
                 )
         resp = self.kalshi.place_order(ticker, sig["side"], size, limit, hours_to_expiry=hours_to_expiry)
         order = resp.get("order") or resp

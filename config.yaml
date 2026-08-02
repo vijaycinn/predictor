@@ -34,7 +34,8 @@ execution:
   prefer_maker: true         # rest limit orders when possible
   maker_depth_cents: 2       # rest >=2c below ref price (VJ 2026-08-02)
   maker_min_volume: 100      # min contracts at chosen maker level
-  max_price_deviation_cents: 5  # fail closed if live price deviates from approved (VJ 2026-08-02)
+  max_price_raise_pct: 10   # HARD (VJ 2026-08-02): NEVER pay >10% above approved price. Below always OK (maker).
+  max_buy_price_cents: 40    # HARD BAND (VJ 2026-08-02): never buy YES above 40c unless explicit override
   aggressiveness: 0.5        # 0 = best price only, 1 = cross spread aggressively
   stop_loss: false           # NO STOP-LOSS (VJ): high-risk/high-reward events
 
