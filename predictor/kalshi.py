@@ -165,6 +165,13 @@ def place_order(ticker: str, side: str, count: float, price: float, reduce_only:
     # 0-1 tick; None/out-of-range raises instead of degrading to market.
     if price is None or not (0 < float(price) < 1):
         raise ValueError(f"LIMIT-ONLY enforcement: place_order requires a limit price, got {price!r}")
+    # Normalize side so lowercase/aliases can never invert the order (2026-08-03 incident:
+    # side="yes" failed `== "YES"` and built a SELL. Valid: YES/NO, buy/sell, bid/ask.)
+    side_map = {"YES": "YES", "NO": "NO", "BUY": "YES", "SELL": "NO", "BID": "YES", "ASK": "NO"}
+    try:
+        side = side_map[side.upper().strip()]
+    except (AttributeError, KeyError):
+        raise ValueError(f"place_order: invalid side {side!r}, expected YES/NO/buy/sell/bid/ask")
     # Kalshi tick size is 1c for these markets; off-tick prices are rejected
     price_tick = round(price * 100) / 100.0
     lifetime_h = max_lifetime_hours
