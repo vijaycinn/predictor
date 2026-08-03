@@ -82,3 +82,27 @@ setup. Chicago PMI 57.6 = manufacturing expansion (only bright spot).
 - **FERG into S&P 500**: index-inclusion flows mechanical; small if any Kalshi-able angle. EA getting dropped = minor negative for EA holders only.
 - **Watch**: AMZN cloud acceleration is 5th straight quarter — cloud re-acceleration theme supports MSFT/Azure-equivalent read on AI capex demand. Supports AI-infra/tech bull thesis.
 - No macro prints in this batch — all micro/corporate. Keep FED markets unchanged (stagflation-lean read from Aug 2 still standing, CPI Aug 12 is next pivot).
+
+## Fourth batch (2026-08-03, DB News — ISM manufacturing + PMI)
+
+### Data
+- **S&P 500 OPENS +0.5%, NASDAQ +0.4%** — risk-on open
+- **US S&P July Mfg PMI 53.9 vs est 53.8** — beat, mild
+- **US July ISM Mfg 55.6 vs 53.3 prior; est 54.0** — solid beat, expansion
+- **US July ISM Mfg Prices 71.1 vs 73.0 prior; est 71.0** — inline, slightly cooling
+- **US July ISM Mfg Employment 52.8 vs 49.7 prior; est 50.0** — beat, back in expansion
+- **US July ISM Mfg New Orders 56.7 vs 56.0 prior; est 56.7** — inline, strong
+
+### Reads (per-item)
+- PMI 53.9 beat = manufacturing expansion confirmed, marginal
+- ISM 55.6 big beat = broad factory strength — hard-landing thesis takes a hit
+- Prices 71.1 inline-ish (slightly below prior) = inflation pressure STILL elevated but not accelerating; cooling from 73.0
+- Employment 52.8 beat + expansion = labor demand in factory sector solid → hawkish lean
+- New Orders 56.7 = strong forward demand → keeps expansion going
+- Construction spending -0.1% miss vs +0.2% est = minor soft spot, housing/construction cool
+
+### Kalshi implications
+- **Strong ISM (55.6) + Employment beat (52.8) = Fed HOLD bias strengthened** → check `KXFEDDECISION-26SEP-H0` (hold), `KXRATECUT-26DEC31` (any cut by Dec). Cut odds likely fading.
+- **Prices 71.1 still elevated** = stagflation tension persists; not enough cooling to revive cut odds.
+- Next pivot: **CPI Aug 12** — if core confirms cooling, cut odds revive; if sticky, hold strengthens further.
+- Risk-on open (+0.5%) consistent with strong data; equity-downside markets weak.
