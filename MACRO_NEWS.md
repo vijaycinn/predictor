@@ -57,3 +57,28 @@ setup. Chicago PMI 57.6 = manufacturing expansion (only bright spot).
   hard; if it confirms cooling, cut odds revive. If it confirms stickiness,
   hold strengthens.
 - Chicago PMI 57.6 → manufacturing strength, mild USD-positive, commodity-supportive
+
+## Third batch (2026-08-03, premarket movers)
+
+### Mag 7 — mostly higher
+- AMZN +1.6% (cloud revenue acceleration 5th straight qtr), GOOGL +1.7%, MSFT +1.8%, META +1.6%, TSLA +0.6%, AAPL +0.6%, NVDA -0.3%
+
+### Single names
+- **ATKR +27%**: Prysmian buyout $95/sh cash, $3.8B incl debt (deal risk gone, no trade angle)
+- **BMY +5%**: AstraZeneca explored acquisition (chatter, unconfirmed)
+- **CRCL -5.7%**: Morgan Stanley cut to underweight — lower stablecoin circulation outlook
+- **CNH +5%**: raised FY adjusted EPS guide
+- **FERG +8%**: replacing EA in S&P 500 before Aug 5 open (index inclusion)
+- **MAR -3%**: Q2 revenue miss
+- **KRYS -7%**: Q2 product revenue missed consensus
+- **SUPN +17% / INDV +8%**: tax-free all-stock merger of equals
+- **SRAD -14%**: cut FY revenue guidance
+
+## Market implications (Kalshi context)
+
+- **Mag 7 bid = risk-ON open**. Cloud/tech strength supportive of NDX/equity-up markets; NVDA -0.3% only laggard (rotation, not panic).
+- **M&A cluster** (ATKR, SUPN/INDV, BMY chatter, FERG S&P add) = deal environment healthy → mild bullish for SMID + credit sentiment. M&A strength usually read as confidence signal.
+- **CRCL downgrade ≠ crypto weakness** — stock-specific stablecoin circulation miss, not BTC/ETH signal. Don't misread as crypto-news.
+- **FERG into S&P 500**: index-inclusion flows mechanical; small if any Kalshi-able angle. EA getting dropped = minor negative for EA holders only.
+- **Watch**: AMZN cloud acceleration is 5th straight quarter — cloud re-acceleration theme supports MSFT/Azure-equivalent read on AI capex demand. Supports AI-infra/tech bull thesis.
+- No macro prints in this batch — all micro/corporate. Keep FED markets unchanged (stagflation-lean read from Aug 2 still standing, CPI Aug 12 is next pivot).
