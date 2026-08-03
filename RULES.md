@@ -41,6 +41,14 @@ the process is luck, not skill — both get analyzed.
    (e.g. "1h", "24h", "until close") override. Never exceed 24h absolute cap,
    and leave >= 20% of the event's remaining time: lifetime <= 0.8 ×
    hours_to_expiry. Long-dated research bets may extend on VJ instruction.
+5a. **TIMED-EVENT TTL = EVENT START (VJ 2026-08-03, codified).** For markets
+   tied to a timed event (earnings call, EO signing, match kickoff, data
+   release), DEFAULT TTL = event start time — the Kalshi app's "until event
+   starts" expiry option. Order rests until event begins, then expires.
+   `ttl = event_start − now` (min 1h, cap 24h, NO 0.8× decay — the event IS
+   the expiry). Plain 1h default still applies to untimed/continuous markets.
+   Origin: PLTR/GRAB/SNAP mention orders 2026-08-03 — 0.8× formula gave 5.2h,
+   would expire 1.5h before the 21:00Z call; VJ set 8h to survive to start.
 6. **$1/trade cap.** `risk.max_trade_usd: 1.0`. No margin ever (code asserts).
    Position cap per config. No stop-loss — ride to resolution.
 7. **NEVER BET IF OUTCOME PROBABILITY < 50%.** Applies to ALL bets (not just live).
