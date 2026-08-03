@@ -43,12 +43,25 @@ CHOKEPOINT_KW = [
     "hormuz", "suez", "bab el-mandeb", "strait", "chokepoint", "gulf",
     "red sea", "canal",
 ]
+# VJ 2026-08-02: the biggest market mover = market-moving tweets from the
+# US PRESIDENT (Trump), referenced via DeItaone feed. Trump statements carry
+# outsized weight: ceasefire/deal = oil/commodities ease; strike/threat =
+# oil/gold/VIX spike; tariffs/trade = commerce/commodities.
+TRUMP_MARKERS = ["trump", "president"]
+TRUMP_ESC = ["strike", "strikes", "attack", "war", "missile", "tariff", "tariffs", "sanction", "sanctions", "punish", "punishment"]
+TRUMP_DEESC = ["ceasefire", "deal", "negotiation", "negotiations", "talks", "agreement", "delay", "delayed", "postpone", "postponed", "peace", "call off", "calloff", "friendship", "de-escalat", "deescalat"]
+TRUMP_TRADE = ["tariff", "tariffs", "trade", "commerce", "china", "europe", "import", "export"]
 
 def classify(text: str) -> dict:
     t = text.lower()
     esc = [k for k in ESCALATE_KW if k in t]
     dee = [k for k in DEESCALATE_KW if k in t]
     choke = [k for k in CHOKEPOINT_KW if k in t]
+    # Trump detection (VJ: biggest market mover — US president statements)
+    is_trump = any(k in t for k in TRUMP_MARKERS)
+    trump_esc = [k for k in TRUMP_ESC if k in t]
+    trump_deesc = [k for k in TRUMP_DEESC if k in t]
+    trump_trade = [k for k in TRUMP_TRADE if k in t]
     if esc and not dee:
         sent = "ESCALATION"
     elif dee and not esc:
@@ -57,8 +70,20 @@ def classify(text: str) -> dict:
         sent = "MIXED"
     else:
         sent = "NEUTRAL"
+    # Trump override: his explicit words win over keyword ambiguity
+    if is_trump:
+        if trump_esc and not trump_deesc:
+            sent = "TRUMP-ESCALATION"
+        elif trump_deesc and not trump_esc:
+            sent = "TRUMP-DE-ESCALATION"
+        elif trump_deesc and trump_esc:
+            sent = "TRUMP-MIXED"
+        elif trump_trade:
+            sent = "TRUMP-TRADE"
     return {"sentiment": sent, "escalate": esc[:5], "deescalate": dee[:5],
-            "chokepoint": bool(choke), "choke_hits": choke[:3]}
+            "chokepoint": bool(choke), "choke_hits": choke[:3],
+            "is_trump": is_trump, "trump_esc": trump_esc[:5],
+            "trump_deesc": trump_deesc[:5], "trump_trade": trump_trade[:5]}
 
 def fetch_feed(n=20) -> list:
     """Pull DeItaone tweets via xurl raw API."""
@@ -124,12 +149,15 @@ def main():
         c = classify(txt)
         if c["sentiment"] != "NEUTRAL" or c["chokepoint"]:
             hits.append((tw, c, txt, ts))
-            print(f"[{ts}] {c['sentiment']:<14} {txt[:110]}")
+            star = "★" if c["is_trump"] else " "
+            print(f"[{ts}]{star} {c['sentiment']:<18} {txt[:105]}")
             if c["choke_hits"]:
                 print(f"    choke-point: {', '.join(c['choke_hits'])}")
 
     print("=" * 72)
-    # direction read — weight choke-point + recent tweets higher
+    # direction read — Trump statements are the BIGGEST mover (VJ 2026-08-02):
+    # his ceasefire/deal words cool oil/commodities; strike/tariff words spike
+    # them. Weight Trump 3x. Recent tweets (first 6) carry extra weight.
     esc = sum(1 for _, c, _, _ in hits if c["sentiment"] == "ESCALATION")
     dee = sum(1 for _, c, _, _ in hits if c["sentiment"] == "DE-ESCALATION")
     choke_esc = sum(1 for _, c, _, _ in hits if c["sentiment"] == "ESCALATION" and c["chokepoint"])
@@ -139,14 +167,20 @@ def main():
     r_esc = sum(1 for c in recent if c["sentiment"] == "ESCALATION")
     r_dee = sum(1 for c in recent if c["sentiment"] == "DE-ESCALATION")
 
-    score = (choke_dee - choke_esc) * 2 + (r_dee - r_esc)  # de-esc negative -> risk-on
+    # Trump-weighted score (3x)
+    t_esc = sum(3 for _, c, _, _ in hits if c["sentiment"] == "TRUMP-ESCALATION")
+    t_dee = sum(3 for _, c, _, _ in hits if c["sentiment"] == "TRUMP-DE-ESCALATION")
+    t_trade = sum(2 for _, c, _, _ in hits if c["sentiment"] == "TRUMP-TRADE")
+    t_mixed = sum(1 for _, c, _, _ in hits if c["sentiment"] == "TRUMP-MIXED")
+
+    score = (choke_dee - choke_esc) * 2 + (r_dee - r_esc) + (t_dee - t_esc) + (t_trade - t_mixed)
     if score <= -2:
-        direction = "RISK-OFF: oil ▲ gold ▲ VIX ▲ (choke-point escalation)"
+        direction = "RISK-OFF: oil ▲ gold ▲ VIX ▲ (choke-point/Trump escalation)"
     elif score >= 2:
-        direction = "RISK-ON: oil ▼ gold ▼ VIX ▼ (de-escalation)"
-    elif (r_dee + choke_dee) > (r_esc + choke_esc):
+        direction = "RISK-ON: oil ▼ gold ▼ VIX ▼ (de-escalation/Trump deal)"
+    elif (r_dee + choke_dee + t_dee) > (r_esc + choke_esc + t_esc):
         direction = "RISK-ON bias: oil/gold/VIX soft (de-escalation lean)"
-    elif (r_esc + choke_esc) > (r_dee + choke_dee):
+    elif (r_esc + choke_esc + t_esc) > (r_dee + choke_dee + t_dee):
         direction = "RISK-OFF bias: oil/gold/VIX firm (escalation lean)"
     else:
         direction = "NEUTRAL — no clear geo signal"

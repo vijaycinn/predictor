@@ -106,6 +106,10 @@ the process is luck, not skill — both get analyzed.
     PM — the post-move sets the tone for the week). Unless instructed, do NOT
     do geo analysis at other times. Feed: xurl @DeItaone (installed at
     /data/.hermes/home/.local/bin/xurl, auth verified).
+    **TRUMP = BIGGEST MOVER (VJ 2026-08-02)**: market-moving tweets from the
+    US president (via DeItaone) dominate — his ceasefire/deal words cool
+    oil/commodities/commerce; his strike/tariff/threat words spike them.
+    Trump tweets weighted 3x in direction score (★ in scan output).
 19. **WEEKLY ORDER REVIEW — Sun 1am CT (VJ 2026-08-02).** Every Sunday 1am CT,
     pull order history for the week before the previous Sunday, evaluate the
     ONLY success metric: **MARGIN OF PROFIT**. If margins are poor and losses
