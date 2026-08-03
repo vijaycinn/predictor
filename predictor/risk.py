@@ -254,6 +254,14 @@ def _maker_level(ladder: list, ref_price: float, depth_cents: int, min_vol: floa
     (e.g. 0.01 x 2018) drags the arithmetic mean away from the money —
     use the density peak (level with max neighborhood volume) instead.
 
+    TRASH-FLOOR FILTER (VJ 2026-08-03, AFFO lesson): before density mode,
+    drop levels below `max(0.05, 0.25 × ref_price)`. Deep near-zero bids
+    (0.01 x 533 on a 0.25 book) are lottery/floor liquidity, NOT directional
+    lean — they out-volume the real wall and corrupt the density peak.
+    AFFO: floor 0.0625 drops 0.01-0.05, wall 0.13 x 104 wins (VJ filled
+    13c; a naive density peak picked 0.01). COMM: floor 0.10 keeps the
+    0.10-0.14 wall. Brent: floor 0.12 drops the 0.01 tail, wall 0.45 wins.
+
     Implementation: for each qualifying level, sum sizes of all levels within
     ±3c (the cluster), pick the level with the maximum neighborhood volume
     (the collective intelligence). Ties -> cheaper level (more edge as maker).
@@ -261,7 +269,8 @@ def _maker_level(ladder: list, ref_price: float, depth_cents: int, min_vol: floa
     if not ladder or ref_price is None:
         return None
     thresh = round(ref_price - depth_cents / 100.0, 3)
-    # qualifying levels (>= threshold, enough size)
+    floor = max(0.05, 0.25 * float(ref_price))
+    # qualifying levels (>= threshold, above trash floor, enough size)
     levels = []
     for p, s in ladder:
         try:
@@ -269,7 +278,7 @@ def _maker_level(ladder: list, ref_price: float, depth_cents: int, min_vol: floa
             size = float(s)
         except (TypeError, ValueError):
             continue
-        if price <= thresh and size >= min_vol:
+        if price <= thresh and price >= floor and size >= min_vol:
             levels.append((price, size))
     if not levels:
         return None
