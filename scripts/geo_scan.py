@@ -73,10 +73,26 @@ def fetch_feed(n=20) -> list:
         return []
     return d.get("data", [])
 
+def _repo_path():
+    """Predictor repo root — works from repo copy AND cron copy
+    (~/.hermes/scripts/geo_scan.py)."""
+    here = os.path.dirname(os.path.abspath(__file__))
+    # cron copy: ~/.hermes/scripts -> look for ../.. == /data/.hermes, not repo
+    if here.endswith("scripts") and os.path.basename(os.path.dirname(here)) == ".hermes":
+        repo = "/data/workspace/predictor"
+        if os.path.isdir(os.path.join(repo, "predictor")):
+            return repo
+        return None
+    # repo copy: <repo>/scripts -> parent is repo
+    return os.path.dirname(here)
+
 def kalshi_get(path, params=None):
     """Minimal Kalshi GET (reuse predictor lib when run from repo)."""
+    repo = _repo_path()
+    if not repo:
+        return None
     try:
-        sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        sys.path.insert(0, repo)
         from predictor import kalshi
         return kalshi.get_json(path, params=params, auth=True)
     except Exception:
@@ -139,26 +155,28 @@ def main():
     # Kalshi shortlist (oil/gold/VIX)
     print("\nKALSHI SHORTLIST (for geo trade direction):")
     try:
-        sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-        from predictor import kalshi
-        for series, label in [("KXWTI", "WTI"), ("KXGOLDD", "GOLD daily"), ("KXGOLDMON", "GOLD monthly")]:
-            d = kalshi.get_json("/markets", params={"series_ticker": series, "status": "open", "limit": 100}, auth=True)
-            ms = [m for m in (d or {}).get("markets") or [] if m.get("market_type") == "binary"]
-            # nearest 3 open events by close time
-            ms.sort(key=lambda m: m.get("close_time", ""))
-            seen = set()
-            n = 0
-            for m in ms:
-                ev = m["ticker"].split("-T")[0]
-                if ev in seen:
-                    continue
-                seen.add(ev)
-                bid = float(m.get("yes_bid_dollars") or 0)
-                ask = float(m.get("yes_ask_dollars") or 0)
-                print(f"  {label} {m['ticker'][:46]:46s} bid={bid:.2f} ask={ask:.2f} close={m.get('close_time','')[:10]}")
-                n += 1
-                if n >= 4:
-                    break
+        repo = _repo_path()
+        if repo:
+            sys.path.insert(0, repo)
+            from predictor import kalshi
+            for series, label in [("KXWTI", "WTI"), ("KXGOLDD", "GOLD daily"), ("KXGOLDMON", "GOLD monthly")]:
+                d = kalshi.get_json("/markets", params={"series_ticker": series, "status": "open", "limit": 100}, auth=True)
+                ms = [m for m in (d or {}).get("markets") or [] if m.get("market_type") == "binary"]
+                # nearest 3 open events by close time
+                ms.sort(key=lambda m: m.get("close_time", ""))
+                seen = set()
+                n = 0
+                for m in ms:
+                    ev = m["ticker"].split("-T")[0]
+                    if ev in seen:
+                        continue
+                    seen.add(ev)
+                    bid = float(m.get("yes_bid_dollars") or 0)
+                    ask = float(m.get("yes_ask_dollars") or 0)
+                    print(f"  {label} {m['ticker'][:46]:46s} bid={bid:.2f} ask={ask:.2f} close={m.get('close_time','')[:10]}")
+                    n += 1
+                    if n >= 4:
+                        break
     except Exception as e:
         print(f"  Kalshi pull failed: {e}")
 
