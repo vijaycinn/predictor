@@ -74,9 +74,19 @@ the process is luck, not skill — both get analyzed.
 
 8. **Crypto: ≤1 month to expiry only.** No wild 2-month+ price bets.
    (VJ: "I only am comfortable with crypto that is within a month.")
-9. **Polymarket = sentiment/bias source** (global traders, wider sample than Kalshi).
-   Research + Polymarket sentiment drives bias; ≥2% trend counts. Execution venue
-   remains Kalshi (Polymarket live needs wallet+gas — not wired).
+9. **POLYMARKET = TRUTH ANCHOR (VJ 2026-08-04).** Polymarket is the better
+   reflection of market truth — bigger, global, pioneer venue. Kalshi = execution
+   venue only. PM price = the reference/independent prob for ANY trade.
+   - **SKEW = EDGE**: when Kalshi price diverges from Polymarket price on the
+     same event, the skew is the edge. Trade Kalshi to capture it while the
+     market gravitates to truth.
+   - Kalshi 4c rich vs PM (e.g. BTC 60K one-touch 0.49/0.50 vs PM 0.45/0.46):
+     Kalshi side is overpriced → buy Kalshi NO, or wait for Kalshi to come down
+     to PM-implied level before buying YES. Never pay above PM-implied fair.
+   - Kalshi cheap vs PM → buy Kalshi YES at the cheap price.
+   - PM-implied fair = PM bid/ask mid. Kalshi entry must be at or below it
+     (maker), else the edge is negative.
+   - PM is also the cross-venue <50% win-floor source (rule 7).
 10. **Favorite categories**: T20/cricket, crypto (BTC/ETH targets ≤1mo), economic
     (Fed/CPI/jobs), politics, WTA/tennis. Skip in-play micro-edge chases unless
     user explicitly calls live shots.
