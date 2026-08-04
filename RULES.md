@@ -74,19 +74,24 @@ the process is luck, not skill — both get analyzed.
 
 8. **Crypto: ≤1 month to expiry only.** No wild 2-month+ price bets.
    (VJ: "I only am comfortable with crypto that is within a month.")
-9. **POLYMARKET = TRUTH ANCHOR (VJ 2026-08-04).** Polymarket is the better
-   reflection of market truth — bigger, global, pioneer venue. Kalshi = execution
-   venue only. PM price = the reference/independent prob for ANY trade.
-   - **SKEW = EDGE**: when Kalshi price diverges from Polymarket price on the
-     same event, the skew is the edge. Trade Kalshi to capture it while the
-     market gravitates to truth.
-   - Kalshi 4c rich vs PM (e.g. BTC 60K one-touch 0.49/0.50 vs PM 0.45/0.46):
-     Kalshi side is overpriced → buy Kalshi NO, or wait for Kalshi to come down
-     to PM-implied level before buying YES. Never pay above PM-implied fair.
-   - Kalshi cheap vs PM → buy Kalshi YES at the cheap price.
-   - PM-implied fair = PM bid/ask mid. Kalshi entry must be at or below it
-     (maker), else the edge is negative.
-   - PM is also the cross-venue <50% win-floor source (rule 7).
+9. **POLYMARKET = TRUTH ANCHOR, ARB = SELL-ONLY ON KALSHI (VJ 2026-08-04).**
+   Polymarket is the better reflection of market truth — bigger, global, pioneer
+   venue. PM price = truth. Kalshi = execution venue only.
+   - **ARB DEFINITION (VJ, restated 2026-08-04):** when Kalshi price diverges
+     from Polymarket price, evaluate **ONLY options to SELL on Kalshi**.
+     The edge = Kalshi rich vs PM truth → SELL the Kalshi side (sell YES /
+     buy NO at the rich price). Capturing overpricing, never buying the
+     cheap side.
+   - **NO BUY-SIDE CAPTURE.** Buying Kalshi YES because it's "cheap vs PM"
+     is NOT the arb play — that's a directional bet, not skew capture.
+     If Kalshi is NOT rich vs PM on a side, there is no sell opportunity → SKIP.
+   - Sell mechanics: sell YES = place NO bid at the rich level. Win prob for
+     the sell = 1 − PM-implied YES prob (PM = independent source, rule 7).
+     Only sell when PM-implied YES prob < Kalshi sell price (edge positive).
+   - Kalshi rich vs PM (e.g. BTC 60K one-touch 0.49/0.50 vs PM 0.45/0.46):
+     sell YES at 0.50 (buy NO), edge = 0.50 − 0.46 = +4c.
+   - PM-implied fair = PM bid/ask mid. Never hold a sell that prices below
+     PM-implied YES prob.
 10. **Favorite categories**: T20/cricket, crypto (BTC/ETH targets ≤1mo), economic
     (Fed/CPI/jobs), politics, WTA/tennis. Skip in-play micro-edge chases unless
     user explicitly calls live shots.
