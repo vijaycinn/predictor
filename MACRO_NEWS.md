@@ -2,7 +2,7 @@
 
 VJ forwards macro-economic news here for perspective on choosing Kalshi markets.
 This file is the persisted reference — memory only carries a pointer.
-Updated: 2026-08-02.
+Updated: 2026-08-04.
 
 ## US Labor Market (Jul 25 week)
 
@@ -106,3 +106,43 @@ setup. Chicago PMI 57.6 = manufacturing expansion (only bright spot).
 - **Prices 71.1 still elevated** = stagflation tension persists; not enough cooling to revive cut odds.
 - Next pivot: **CPI Aug 12** — if core confirms cooling, cut odds revive; if sticky, hold strengthens further.
 - Risk-on open (+0.5%) consistent with strong data; equity-downside markets weak.
+
+## Fifth batch (2026-08-03, Truth Social — Trump Iran + polling tweets)
+
+### Trump poll tweet
+- "Real polling best ever" — tax cuts, employment, border, Venezuela victory, Iran denuclearization. VOTE REPUBLICAN.
+- Read: standard campaign rhetoric. Mentions "Fake News", "Radical Left", "Dumocrats" — keyword fodder for speech/mention markets only.
+
+### Trump Iran tweet (escalation-mixed)
+- Iran "unbelievably duplicitous" — asks for meeting, talks begin, then denies. Hormuz "completely controlled by US Navy", "Wall of Steel" blockade, "nothing gets through unless a Deal, or Total Surrender". "IRAN WILL NEVER HAVE A NUCLEAR WEAPON!"
+- Read: MIXED/ESCALATION-LEAN. Trump still wants deal but hardening rhetoric. Hormuz blockade claim = oil risk premium support.
+
+### Pakistan denies
+- Islamabad denies Trump's claim of scheduled US-Iran talks; Pakistan + Qatar still mediating.
+- Read: deal-in-sight thesis WEAKENED — Iran + Pakistan both denying. Talks not confirmed = oil stays elevated, risk premium intact.
+
+### Kalshi implications
+- **Oil**: Hormuz "Wall of Steel" + talks denied = oil▲ lean. SPR at 304.8M (lowest since 1983) compounds. WTI high-strike plays stay alive.
+- **Trump EO mention (1:30pm ET)**: Iran (3+) 0.76 looks cheap if he repeats today's Iran rants in remarks; his tweets already hit Iran 4x. OIL 0.80 near-certain.
+- **Midterm Nov 3**: polling tweet = campaign season noise, no market shift.
+
+## Sixth batch (2026-08-04, DB News — JOLTS + factory orders)
+
+### Data
+- **S&P 500 OPENS +0.5%, NASDAQ +0.8%** — risk-on open, tech leading
+- **US JUNE JOB OPENINGS 7.359M**; est. 7.400M → **miss** (slight, -0.5%)
+- **US JUNE FACTORY ORDERS -0.3% m/m**; est. +0.2% → **miss**
+- **US JUNE FACTORY ORDERS EX-TRANS -0.4% m/m**; prev. +1.9% → **miss**
+- **US FINAL JUNE DURABLE GOODS +0.5% m/m**; prev. -4.5% → **revised up**
+
+### Reads (per-item)
+- JOLTS miss = first crack in labor-tight story (after strong claims last week). Openings cooling = mild dovish tick, but magnitude tiny — not a signal shift.
+- Factory orders miss = June HARD data soft (ISM July 55.6 was strong survey — June vs July timing conflict, July surveys more current/forward-looking).
+- Ex-trans -0.4% after +1.9% prior = core manufacturing orders cooling.
+- Durable goods revised UP to +0.5% = positive revision, partially offsets orders miss.
+
+### Kalshi implications
+- **Net: MIXED-TO-SOFT hard data, no pivot.** JOLTS miss mildly dovish (rate-cut odds tick up a hair), factory orders miss neutral (contradicted by July ISM beat).
+- **Cut odds unchanged bias**: stagflation-lean from Aug 2 still standing. One JOLTS miss does NOT reverse it — Sept/Oct cut bets stay under pressure until CPI Aug 12.
+- **Equity**: risk-on open (+0.5/+0.8) = tech/NDX-up sentiment intact; equity-downside markets weak.
+- **Next catalyst still CPI Aug 12** — that print decides cut-odds revival vs hold-strengthen. This batch = noise, no trade-grade signal.
