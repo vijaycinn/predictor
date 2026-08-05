@@ -2,7 +2,7 @@
 
 VJ forwards macro-economic news here for perspective on choosing Kalshi markets.
 This file is the persisted reference — memory only carries a pointer.
-Updated: 2026-08-04.
+Updated: 2026-08-05.
 
 ## US Labor Market (Jul 25 week)
 
@@ -146,3 +146,39 @@ setup. Chicago PMI 57.6 = manufacturing expansion (only bright spot).
 - **Cut odds unchanged bias**: stagflation-lean from Aug 2 still standing. One JOLTS miss does NOT reverse it — Sept/Oct cut bets stay under pressure until CPI Aug 12.
 - **Equity**: risk-on open (+0.5/+0.8) = tech/NDX-up sentiment intact; equity-downside markets weak.
 - **Next catalyst still CPI Aug 12** — that print decides cut-odds revival vs hold-strengthen. This batch = noise, no trade-grade signal.
+
+## Seventh batch (2026-08-05, DB News — ADP + mortgage apps)
+
+### Data
+- **US MBA MORTGAGE APPLICATIONS INDEX -2.9% last week** — housing demand cooling
+- **US ADP JULY PRIVATE EMPLOYMENT +44K**; est. +70K → **MISS** (worst since Jan 2024)
+
+### Reads (per-item)
+- ADP miss is BIG: 44K vs 70K est = clearest labor-cooling signal since Jan. ADP notoriously noisy vs official payrolls (Friday Aug 7) but sets a bearish floor for the NFP read — risk of downside surprise now real.
+- Mortgage apps -2.9% = housing demand weak (high rates + cooling income). Second soft print in a row after income miss (Jun +0.2% vs +0.3%).
+
+### Kalshi implications
+- **ADP miss mildly revives rate-cut odds** — but stagflation-lean (PCE 3.7%, deflator 6.3%) still blocks the Fed. No pivot until CPI Aug 12 + NFP Aug 7.
+- **Friday NFP (Aug 7) now the live catalyst**: ADP miss + JOLTS miss + income miss = cooling labor stack. If NFP confirms sub-100K, Sept cut odds jump; if NFP beats ADP noise, cut bets fade again.
+- **Equity downside**: GDP miss + labor cooling = soft-landing narrative cracking. Small lean to equity-downside markets, but ADP-only evidence insufficient for size.
+- **Housing**: mortgage apps -2.9% = bearish housing-related markets; no Kalshi housing series active — skip.
+- **Net: watch NFP Fri, CPI Aug 12. This batch = labor-cooling lean, NOT a confirmed pivot. No new trades.**
+
+## Eighth batch (2026-08-05, GEO — Hormuz deal 50:50 + Trump imminent-deal signal)
+
+### Data
+- **Senior Gulf official (CNN): 50:50 chance agreement Friday** on Strait of Hormuz
+- **Trump: signals imminent deal** + warns severe military retaliation if talks collapse
+
+### Read
+- Two-sided headline: deal-lean (Gulf official 50:50, Trump "imminent") vs retaliation floor (collapse threat).
+- Trump = BIGGEST mover (memory: TRUMP tweets move markets hardest). His "imminent deal" language pushes oil▲ thesis to risk; retaliation warning keeps floor.
+- Reverses Monday's Iran/Pakistan denial lean (deal-in-sight WEAKENED). Now deal-in-sight = live 50:50.
+
+### Kalshi implications
+- **OIL high-strike plays (WTI 0.80 near-certain) at risk** — if Friday deal signs, deflate fast. Watch, don't add.
+- **Iran (3+) 0.76 cheap thesis WEAKENED** — 50:50 deal odds = escalation odds compressed.
+- Trump can flip this in seconds — any tweet = instant repricing.
+- Geo analysis window 7pm CST tonight: re-evaluate oil/Iran exposure then. No action now (08:21 CDT).
+
+

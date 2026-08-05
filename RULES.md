@@ -26,7 +26,7 @@ the process is luck, not skill — both get analyzed.
    - Guard reference = `sig.ev_calc.price_side` or `sig.approved_price` (user-approved price, never the live book).
    - Resting BELOW approved is always fine — that's the maker edge.
    - Fail closed: raise, do not trade at stale/unapproved price.
-4. **Maker depth pricing.** Rest on best bid level >= `maker_depth_cents` (2) below
+5. **Maker depth pricing.** Rest on best bid level >= `maker_depth_cents` (2) below
    reference with size >= `maker_min_volume` (100) using full bid/ask ladders.
    **VOLUME-PEAK RULE (VJ 2026-08-02)**: ALWAYS follow the volume — the market
    leans where the money sits, not where market makers bait. Choose the level
@@ -35,6 +35,17 @@ the process is luck, not skill — both get analyzed.
    bait; the wall of size is the real lean. Drop levels >2 stddev from the
    peak, pick the level closest to the volume-weighted mean (ties → cheaper).
    Fallback: 50% nudge inside book. Never cross for fills when maker possible.
+5b. **WALL GATE — FULL LADDER, NEVER TOP-10 (VJ 2026-08-05, Ribecai lesson, HARD).**
+   Limit may NOT rest more than `wall_tolerance_cents` (2) ABOVE the full-ladder
+   volume-weighted wall (density mode: max neighborhood volume ±3c, trash floor
+   0.25×ref). Above wall = overpay = RuntimeError (`risk.wall_check` runs in
+   `LiveExecutor.execute` every path; `sig['override_wall_check']` = explicit
+   VJ bypass only). MUST use `kalshi.get_orderbook_full(ticker)` (orderbook_fp,
+   ALL levels) — PMXT `fetchOrderBook` truncates top-10 and hides the real wall
+   (Ribecai 2026-08-05: top-10 wall 0.76, full ladder wall 0.65 → bid at 0.76 =
+   11c overpay, filled). Place promptly from instruction-time book: in-play
+   books move fast, a re-fetch shows a moved snapshot (wall 0.65 → 0.78 in
+   minutes).
 5. **Order TTL — DEFAULT 1 HOUR (VJ 2026-08-02), unless VJ overrides.** Resting
    orders default to **1 hour expiry** (`max_lifetime_hours: 1`) — the stale
    resting order is dead weight, re-evaluate often. VJ explicit instructions
@@ -168,3 +179,10 @@ edge), rule 15 (pre-flight gate), rule 16 (suggestion suppression).
   research (Filiz 2c, Young 7c, Zhukov 1c, etc.) — all lottery tickets, most
   resolved worthless. Selection failure: price filter treated as edge. Fix:
   RULES rule 11 (price ≠ edge) + LIVE FLOOR rule 7 (≥50% win from current state).
+- **2026-08-05 Ribecai wall**: VJ: "Buy 1x yes at buy wall". Top-10 PMXT
+  snapshot showed wall 0.76; FULL ladder wall sat 0.65. Bid placed 0.76, filled
+  0.76 = 11c overpay vs wall. Root cause: top-10 truncation + re-fetch before
+  placement (book moved 0.65 → 0.76+ in-play). Fixes: rule 5b wall gate +
+  `risk.wall_check` in executor + `get_orderbook_full` helper (orderbook_fp,
+  all levels). VJ: "POOR EXECUTION! IGNORE EXTREME OUTLIERS, FOCUS ON VOL
+  WEIGHTED WALL."

@@ -195,6 +195,16 @@ def place_order(ticker: str, side: str, count: float, price: float, reduce_only:
     return _auth_request("POST", "/portfolio/events/orders", json_body=body)
 
 
+def get_orderbook_full(ticker: str) -> dict:
+    """FULL orderbook_fp for a market: {'yes_dollars': [[price,size],...],
+    'no_dollars': [[price,size],...]} both ASCENDING, all levels.
+    CRITICAL (VJ 2026-08-05): top-10 snapshots truncate the ladder and hide
+    the real wall (Ribecai: top-10 showed 0.76, full ladder wall at 0.65).
+    Always use this for wall/density computations."""
+    d = get_json(f"/markets/{ticker}/orderbook")
+    return (d or {}).get("orderbook_fp") or {}
+
+
 def get_orders(status: str | None = None, ticker: str | None = None, limit: int = 200) -> list[dict]:
     params: dict = {"limit": limit}
     if status:

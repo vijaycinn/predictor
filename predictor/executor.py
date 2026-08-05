@@ -136,6 +136,18 @@ class LiveExecutor:
         # CONSOLIDATED GATE (VJ 2026-08-02): every execution path runs ALL rules.
         risk_mod.pre_flight_check(sig, limit, self.cfg)
         ticker = sig["condition_id"]
+        # WALL CHECK (VJ 2026-08-05, Ribecai lesson): limit must rest at the
+        # volume-weighted wall of the FULL ladder — never above it. Top-10
+        # snapshots lie; the money sits at the full-ladder density peak.
+        # VJ override via sig['override_wall_check'] (explicit bypass only).
+        if not sig.get("override_wall_check"):
+            full_book = self.kalshi.get_orderbook_full(ticker)
+            if sig.get("side") == "YES":
+                ladder = full_book.get("yes_dollars") or []
+            else:
+                ladder = full_book.get("no_dollars") or []
+            if ladder:
+                risk_mod.wall_check(limit, sig.get("side") or "YES", ladder, self.cfg)
         hours_to_expiry = float(features.get("hours_to_expiry") or 0)
         resp = self.kalshi.place_order(ticker, sig["side"], size, limit, hours_to_expiry=hours_to_expiry)
         order = resp.get("order") or resp

@@ -35,6 +35,7 @@ execution:
   maker_depth_cents: 2       # rest >=2c below ref price (VJ 2026-08-02)
   maker_min_volume: 100      # min contracts at chosen maker level
   max_price_raise_pct: 10   # HARD (VJ 2026-08-02): NEVER pay >10% above approved price. Below always OK (maker).
+  wall_tolerance_cents: 2    # HARD (VJ 2026-08-05): limit may not rest more than 2c ABOVE full-ladder vol-weighted wall (Ribecai lesson: 0.76 bid vs 0.65 wall = overpay)
   max_buy_price_cents: 40    # HARD BAND (VJ 2026-08-02): never buy YES above 40c unless explicit override
   min_win_prob: 0.50         # HARD (VJ 2026-08-02): NEVER bet if outcome prob <50%. Prob must come from independent source (Polymarket arb or verifiable research), not Kalshi book alone.
   aggressiveness: 0.5        # 0 = best price only, 1 = cross spread aggressively

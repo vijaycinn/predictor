@@ -22,6 +22,63 @@ def assert_no_margin(cfg: dict) -> None:
         )
 
 
+def wall_check(limit: float, side: str, ladder: list, cfg: dict) -> None:
+    """WALL CHECK (VJ 2026-08-05, Ribecai lesson): limit must rest at the
+    volume-weighted wall of the FULL ladder, never above it.
+
+    Failure mode: bid placed at 0.76 (top-cluster bait in a moved snapshot)
+    when the full-ladder wall sat at 0.64-0.65 — overpaid ~11c. Root cause:
+    placement used a stale/moved top-10 snapshot instead of the FULL ladder
+    density peak at instruction time.
+
+    Rule:
+      1. Pull the FULL ladder (all levels, not top-10).
+      2. Trash-floor filter (drop < max(0.05, 0.25*ref)) + density mode
+         (max neighborhood volume within ±3c) = the WALL. Wall can be AT
+         top of book — that IS the money.
+      3. For BUY YES: limit must be <= wall + wall_tolerance_cents.
+         For BUY NO: symmetric on the NO ladder.
+      4. Bidding ABOVE the wall = overpay = refused. Below wall = fine
+         (maker edge, may not fill).
+    Raises RuntimeError with wall + limit; caller must NOT place.
+    """
+    exec_cfg = cfg.get("execution", {})
+    tol = float(exec_cfg.get("wall_tolerance_cents", 2))
+    if not ladder:
+        return
+    ref = max(float(p) for p, _ in ladder)
+    floor = max(0.05, 0.25 * float(ref))
+    levels = []
+    for p, s in ladder:
+        try:
+            price = float(p)
+            size = float(s)
+        except (TypeError, ValueError):
+            continue
+        if price >= floor:
+            levels.append((price, size))
+    if not levels:
+        return  # no qualifying levels — skip (can't compute wall)
+    # density mode: level with max neighborhood volume within +-0.03; tie -> cheaper
+    band = 0.03
+    wall = None
+    best_vol = -1.0
+    for p, s in levels:
+        vol_nb = sum(ss for pp, ss in levels if abs(pp - p) <= band)
+        if vol_nb > best_vol or (vol_nb == best_vol and (wall is None or p < wall)):
+            best_vol = vol_nb
+            wall = p
+    if wall is None:
+        return
+    cap = round(wall + tol / 100.0, 3)
+    if float(limit) > cap:
+        raise RuntimeError(
+            f"WALL CHECK: limit {float(limit):.3f} > full-ladder wall {wall:.3f} "
+            f"+ {tol:.0f}c tolerance (cap {cap:.3f}). Money sits at the wall; "
+            f"bidding above it overpays. Rest at wall or below."
+        )
+
+
 def pre_flight_check(sig: dict, limit: float, cfg: dict) -> None:
     """CONSOLIDATED pre-execution gate (VJ 2026-08-02, post-loss retrospective).
 
