@@ -261,7 +261,7 @@ def main():
     p_scan = sub.add_parser("scan", help="run one full scan cycle")
     p_scan.add_argument("--llm-overrides", default=None, help="path to JSON {condition_id: prob_yes}")
     p_scan.add_argument("--shortlist", default=None, help="write LLM review shortlist JSON to this path")
-    p_scan.add_argument("--venue", default=None, choices=["polymarket", "kalshi"], help="override venue from config")
+    p_scan.add_argument("--venue", default=None, choices=["polymarket", "kalshi", "polymarket_us"], help="override venue from config")
     p_scan.add_argument("--verbose", action="store_true")
     p_scan.set_defaults(func=cmd_scan)
 
@@ -273,7 +273,7 @@ def main():
 
     p_ap = sub.add_parser("approve", help="approve + execute proposals (re-verifies EV first)")
     p_ap.add_argument("ids", nargs="+", type=int, help="proposal IDs")
-    p_ap.add_argument("--venue", default=None, choices=["polymarket", "kalshi"])
+    p_ap.add_argument("--venue", default=None, choices=["polymarket", "kalshi", "polymarket_us"])
     p_ap.set_defaults(func=cmd_approve)
 
     p_rj = sub.add_parser("reject", help="reject proposals")
@@ -285,12 +285,12 @@ def main():
 
     p_cl = sub.add_parser("close", help="close an open position (paper: at book; live: reduce_only sell)")
     p_cl.add_argument("ids", nargs="+", type=int, help="trade IDs")
-    p_cl.add_argument("--venue", default=None, choices=["polymarket", "kalshi"])
+    p_cl.add_argument("--venue", default=None, choices=["polymarket", "kalshi", "polymarket_us"])
     p_cl.set_defaults(func=cmd_close)
 
     p_cx = sub.add_parser("cancel", help="cancel a resting order (live: also on exchange)")
     p_cx.add_argument("ids", nargs="+", type=int, help="trade IDs")
-    p_cx.add_argument("--venue", default=None, choices=["polymarket", "kalshi"])
+    p_cx.add_argument("--venue", default=None, choices=["polymarket", "kalshi", "polymarket_us"])
     p_cx.set_defaults(func=cmd_cancel)
 
     p_arb = sub.add_parser("arb", help="arb check: Kalshi vs Polymarket (Predexon) or PMXT Router feed")

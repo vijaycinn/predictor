@@ -103,6 +103,17 @@ the process is luck, not skill — both get analyzed.
      sell YES at 0.50 (buy NO), edge = 0.50 − 0.46 = +4c.
    - PM-implied fair = PM bid/ask mid. Never hold a sell that prices below
      PM-implied YES prob.
+9b. **POLYMARKET US = EXECUTION VENUE #2 (VJ 2026-08-05).** New US-regulated
+   account (Ed25519 API keys, env `POLYMARKET_API_KEY`/`POLYMARKET_SECRET_KEY`).
+   ALL the same rules apply: limit-only, win floor ≥50% from independent source,
+   YES ≤40c band, ≤10% raise, full-ladder wall gate, $1/trade cap, per-buy
+   approval, TTL (1h default / event-aware), no margin, no stop-loss.
+   Execution = `scripts/pmus_cli.py order --place` (routes through
+   `PolymarketUSExecutor` = same `risk.pre_flight_check` + `risk.wall_check`
+   + `check_risk_limits` as Kalshi). pmxt is ANALYSIS ONLY for this venue.
+   Polymarket US gateway (gateway.polymarket.us, no auth) = market data;
+   api.polymarket.us = trading. Sports (NFL/MLB/tennis) heavy; prices tick
+   0.001; `{value, currency}` object shape on px/bestBid/bestAsk.
 10. **Favorite categories**: T20/cricket, crypto (BTC/ETH targets ≤1mo), economic
     (Fed/CPI/jobs), politics, WTA/tennis. Skip in-play micro-edge chases unless
     user explicitly calls live shots.
@@ -171,6 +182,17 @@ edge), rule 15 (pre-flight gate), rule 16 (suggestion suppression).
 
 ## Incident log
 
+- **2026-08-05 Polymarket US bootstrap (VJ new account)**: account + API keys
+  created (polymarket.us/developer, Ed25519 key ID + base64 secret). Auth
+  verified live (`GET /v1/portfolio/positions` 200). pmxt's `PolymarketUS`
+  class is INCOMPATIBLE — it signs EIP-712 with an ETH private key; Polymarket
+  US needs Ed25519 `{ts}{method}{path}` signing. pmxt = ANALYSIS ONLY for
+  polymarket_us. Native client `predictor/polymarket_us.py` + gated executor
+  `PolymarketUSExecutor` (same pre_flight/wall/risk gates as Kalshi) +
+  `scripts/pmus_cli.py`. Order shape validated via preview; placement rejected
+  400 code 3 with $0 balance = funding blocker, not wiring. Fund account to go
+  live. Rate limits: 20 rps/key; 5s latency stopgap on orders = transient
+  reject, DO NOT back off (pure cancels exempt).
 - **2026-08-02 Donski**: approved 0.34 underdog (list price), match went in-play,
   book repriced to 0.93, order filled at 0.90. Three failures: fresh book used as
   reference, no band check, cancel landed after fill. Fixes: band guard (40c),

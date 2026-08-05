@@ -195,11 +195,142 @@ class LiveExecutor:
         return {"ok": True, "cancel_response": resp}
 
 
+class PolymarketUSExecutor:
+    """Live execution on Polymarket US (US-regulated venue, Ed25519 API keys).
+
+    SAME approval gates as Kalshi (VJ 2026-08-05): every placement runs
+    risk.pre_flight_check (limit-only, win floor >= 50% from independent
+    source, YES <= 40c band, <= 10% raise above approved, no margin) +
+    risk.wall_check (full-ladder volume wall) + risk.check_risk_limits
+    (position caps). pmxt is ANALYSIS ONLY for this venue — its PolymarketUS
+    class signs EIP-712 with an ETH private key, incompatible with Polymarket
+    US Ed25519 API keys. Transport: polymarket_us.py.
+
+    TTL: default 1h (event-aware), mapped to TIME_IN_FORCE_GOOD_TILL_DATE.
+    Maker-only (participateDontInitiate) to match VJ's maker-entry pattern.
+    """
+
+    def __init__(self, conn, cfg: dict):
+        from .risk import assert_no_margin
+        assert_no_margin(cfg)  # duplicate guard: config cannot enable margin
+        from . import polymarket_us
+        if not (polymarket_us.get_key_id() and polymarket_us.get_secret()):
+            raise RuntimeError(
+                "PolymarketUSExecutor requires POLYMARKET_API_KEY + "
+                "POLYMARKET_SECRET_KEY env vars (Ed25519 key ID + base64 secret)."
+            )
+        self.conn = conn
+        self.cfg = cfg
+        self.pmus = polymarket_us
+
+    def _ladder(self, slug: str, side: str):
+        """Full YES/NO ladders from the gateway book.
+
+        Book bids = resting YES bid levels; offers = resting YES ask levels.
+        NO bid levels = 1 - offer px (binary equivalence, same as Kalshi's
+        no_dollars = ask_ladder convention). Returns [[price, size], ...].
+        px entries are {value, currency} objects; qty is a number/string."""
+        book = self.pmus.get_book(slug)
+        md = book.get("marketData", {})
+
+        def _px(x):
+            p = x.get("px")
+            if isinstance(p, dict):
+                p = p.get("value")
+            return float(p)
+
+        bids = [[_px(x), float(x.get("qty") or 0)] for x in md.get("bids", [])
+                if x.get("px") is not None]
+        offers = [[1.0 - _px(x), float(x.get("qty") or 0)] for x in md.get("offers", [])
+                  if x.get("px") is not None]
+        return (bids if side == "YES" else offers), md
+
+    def execute(self, sig: dict, size: float, limit: float, features: dict) -> dict:
+        """Place real limit order on Polymarket US after ALL Kalshi gates."""
+        from . import risk as risk_mod
+        # CONSOLIDATED GATE (VJ 2026-08-02): same rules as Kalshi, no path skips.
+        risk_mod.pre_flight_check(sig, limit, self.cfg)
+        slug = sig["condition_id"]
+        side = sig["side"] or "YES"
+
+        # WALL CHECK (VJ 2026-08-05): full-ladder volume wall, never above.
+        if not sig.get("override_wall_check"):
+            ladder, md = self._ladder(slug, side)
+            if ladder:
+                risk_mod.wall_check(limit, side, ladder, self.cfg)
+
+        # portfolio caps (live)
+        price_side = sig.get("ev_calc", {}).get("price_side") or limit
+        ok, reason = risk_mod.check_risk_limits(self.conn, sig, price_side * size, self.cfg)
+        if not ok:
+            raise RuntimeError(f"RISK LIMITS: {reason}")
+
+        # TTL: 1h default / event-aware, cap 24h -> GOOD_TILL_DATE
+        ttl = _event_aware_ttl(self.cfg, features)
+        good_till = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(time.time() + ttl))
+
+        payload = self.pmus.place_limit(
+            slug, side, "BUY", size, limit,
+            tif="TIME_IN_FORCE_GOOD_TILL_DATE",
+            good_till_time=good_till,
+            maker_only=True,
+        )
+        resp = self.pmus.place_order(payload)
+        order_id = resp.get("id")
+        if not order_id:
+            raise RuntimeError(f"Polymarket US order placement returned no id: {resp}")
+
+        executions = resp.get("executions") or []
+        if executions:
+            last = executions[-1]
+            filled = float(last.get("lastShares") or size)
+            fill_px = float(last.get("lastPx", {}).get("value") or limit)
+            status = "OPEN" if filled >= size else "PARTIAL"
+        else:
+            filled = 0.0
+            fill_px = None
+            status = "RESTING"
+
+        trade = {
+            "signal_id": sig.get("signal_id"),
+            "condition_id": slug,
+            "side": side,
+            "action": "BUY",
+            "size": filled,
+            "requested_size": size,
+            "filled_size": filled,
+            "limit_price": limit,
+            "fill_price": fill_px,
+            "slippage": None,
+            "status": status,
+            "order_status": "filled" if executions else "resting",
+            "exchange_order_id": order_id,
+            "ttl_expires_at": time.time() + ttl,
+            "created_at": time.time(),
+        }
+        trade["id"] = db.insert_trade(self.conn, trade)
+        return trade
+
+    def cancel(self, trade_id: int) -> dict:
+        row = self.conn.execute("SELECT * FROM trades WHERE id=?", (trade_id,)).fetchone()
+        if not row or not row["exchange_order_id"]:
+            return {"ok": False, "error": f"trade #{trade_id} has no exchange order id"}
+        resp = self.pmus.cancel_order(row["exchange_order_id"], row["condition_id"])
+        db.update_trade(self.conn, trade_id, {"status": "CANCELED", "order_status": "canceled"})
+        return {"ok": True, "cancel_response": resp}
+
+
 def make_executor(conn, cfg: dict):
     mode = cfg.get("mode", "paper")
-    if mode == "live":
+    if mode != "live":
+        return PaperExecutor(conn, cfg)
+    venue = cfg.get("venue", "polymarket")
+    if venue == "kalshi":
         return LiveExecutor(conn, cfg)
-    return PaperExecutor(conn, cfg)
+    if venue == "polymarket_us":
+        return PolymarketUSExecutor(conn, cfg)
+    raise RuntimeError(f"live venue '{venue}' not wired (kalshi, polymarket_us)")
+
 
 
 def reconcile_orders(conn, cfg: dict) -> list[dict]:
@@ -217,7 +348,68 @@ def reconcile_orders(conn, cfg: dict) -> list[dict]:
     now = time.time()
 
     if cfg.get("mode") == "live":
+        if cfg.get("venue") == "polymarket_us":
+            from . import polymarket_us as pmus
+            open_orders = pmus.get_open_orders().get("orders") or []
+            by_id = {o["id"]: o for o in open_orders}
+            for t in db.resting_orders(conn):
+                oid = t.get("exchange_order_id")
+                if not oid:
+                    continue
+                remote = by_id.get(oid)
+                if remote is None:
+                    try:
+                        remote = pmus.get_order(oid)
+                    except Exception:
+                        remote = None
+                if remote:
+                    cum = float(remote.get("cumQuantity") or 0)
+                    leaves = float(remote.get("leavesQuantity") or 0)
+                    avg = remote.get("avgPx", {}).get("value")
+                    if cum > 0:
+                        fill = float(avg) if avg else float(t["limit_price"])
+                        db.update_trade(conn, t["id"], {
+                            "status": "OPEN" if leaves <= 0 else "PARTIAL",
+                            "order_status": "filled",
+                            "fill_price": fill,
+                            "filled_size": cum,
+                            "size": cum,
+                        })
+                        events.append({"trade_id": t["id"], "event": "filled", "fill_price": fill})
+                        continue
+                    # still resting with leaves -> not terminal
+                    continue
+                # not on exchange anymore: check order detail
+                try:
+                    det = pmus.get_order(oid)
+                    cum = float(det.get("cumQuantity") or 0)
+                    state = str(det.get("state") or "")
+                    if cum > 0:
+                        avg = det.get("avgPx", {}).get("value")
+                        fill = float(avg) if avg else float(t["limit_price"])
+                        db.update_trade(conn, t["id"], {
+                            "status": "OPEN", "order_status": "filled",
+                            "fill_price": fill, "filled_size": cum, "size": cum,
+                        })
+                        events.append({"trade_id": t["id"], "event": "filled", "fill_price": fill})
+                    elif "CANCEL" in state.upper() or "EXPIR" in state.upper() or "REJECT" in state.upper():
+                        db.update_trade(conn, t["id"], {"status": "CANCELED", "order_status": "canceled_remote"})
+                        events.append({"trade_id": t["id"], "event": "canceled_remote"})
+                    continue
+                except Exception:
+                    pass
+                # TTL expiry -> cancel
+                ttl = t.get("ttl_expires_at") or (now + 3600)
+                if ttl < now:
+                    try:
+                        pmus.cancel_order(oid, t["condition_id"])
+                    except Exception:
+                        pass
+                    db.update_trade(conn, t["id"], {"status": "CANCELED", "order_status": "canceled_ttl"})
+                    events.append({"trade_id": t["id"], "event": "canceled_ttl"})
+            return events
         from . import kalshi
+
         orders = kalshi.get_orders(status="resting")
         by_id = {o["order_id"]: o for o in orders}
         for t in db.resting_orders(conn):
