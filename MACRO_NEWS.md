@@ -181,4 +181,29 @@ setup. Chicago PMI 57.6 = manufacturing expansion (only bright spot).
 - Trump can flip this in seconds — any tweet = instant repricing.
 - Geo analysis window 7pm CST tonight: re-evaluate oil/Iran exposure then. No action now (08:21 CDT).
 
+## Ninth batch (2026-08-05, DB News — Services PMI + ISM + oil inventories)
+
+### Data
+- **US S&P JULY SERVICES PMI 54.6**; prior 51.2 → **beat** (expansion accelerating)
+- **US S&P JULY COMPOSITE PMI 54.5**; prior 51.9 → **beat**
+- **US JULY ISM SERVICES PMI 54.1**; prior 54.0, est. 54.5 → in-line (slight miss vs est, still expansion)
+- **US JULY ISM SERVICES PRICES PAID 70.3**; prior 67.7 → **HOT** (+2.6)
+- **US JULY ISM SERVICES EMPLOYMENT 47.4**; prior 51.2 → **CONTRACTION** (-3.8)
+- **US JULY ISM SERVICES NEW ORDERS 57.2**; prior 55.1 → **beat** (demand firm)
+- **US CRUDE OIL INVENTORIES +2.479M barrels**; est. -1.506M → **build vs expected draw** (bearish oil)
+
+### Reads (per-item)
+- Services expansion solid (S&P 54.6 + ISM 54.1) + new orders strong = demand holding.
+- BUT prices paid 70.3 = inflation pressure INTENSIFYING in services (third hot print: GDP deflator 6.3%, PCE 3.7%, now ISM prices 70.3).
+- Employment 47.4 contraction = third labor-cooling signal today (ADP 44K miss, JOLTS miss, now ISM services employment). Cooling stack is building.
+- Oil build +2.5M vs -1.5M est draw = bearish oil, compounds Hormuz deal-lean.
+
+### Kalshi implications
+- **Stagflation-lean CONFIRMED**: demand ok, prices hot, employment cooling. Fed boxed — can't cut into 70.3 prices-paid, but labor cooling demands easing.
+- **Rate cuts**: employment contraction mildly dovish, prices-paid hot mildly hawkish = wash. Sept/Oct cut bets stay range-bound until NFP Fri + CPI Aug 12.
+- **NFP Friday (Aug 7) now the DECIDER**: ADP miss + ISM employment contraction + JOLTS miss = if NFP confirms sub-100K, cut odds jump hard. If NFP beats, stagflation hold wins.
+- **Oil**: inventory build + deal-lean = WTI downside bias. OIL high-strike plays from earlier thesis at risk. 7pm CST geo window: re-eval.
+- **Net: no new trades. Watch NFP Fri + CPI Aug 12. Labor-cooling stack building, inflation sticky.**
+
+
 
