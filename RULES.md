@@ -85,7 +85,12 @@ the process is luck, not skill — both get analyzed.
 
 8. **Crypto: ≤1 month to expiry only.** No wild 2-month+ price bets.
    (VJ: "I only am comfortable with crypto that is within a month.")
-9. **POLYMARKET = TRUTH ANCHOR, ARB = SELL-ONLY ON KALSHI (VJ 2026-08-04).**
+9. **VENUES (VJ 2026-08-05, HARD): "execute in polymarket" = polymarket.us
+   ONLY.** Tradeable venues = Kalshi + polymarket.us. The worldwide venue
+   (polymarket.com) is REFERENCE/TRUTH ONLY — its prices feed edge/arb math,
+   NEVER place orders there. Label venue when comparing (PM.com = truth
+   anchor, PM.us = tradable, Kalshi = execution venue #1).
+10. **POLYMARKET = TRUTH ANCHOR, ARB = SELL-ONLY ON KALSHI (VJ 2026-08-04).**
    Polymarket is the better reflection of market truth — bigger, global, pioneer
    venue. PM price = truth. Kalshi = execution venue only.
    - **ARB DEFINITION (VJ, restated 2026-08-04):** when Kalshi price diverges
@@ -114,16 +119,16 @@ the process is luck, not skill — both get analyzed.
    Polymarket US gateway (gateway.polymarket.us, no auth) = market data;
    api.polymarket.us = trading. Sports (NFL/MLB/tennis) heavy; prices tick
    0.001; `{value, currency}` object shape on px/bestBid/bestAsk.
-10. **Favorite categories**: T20/cricket, crypto (BTC/ETH targets ≤1mo), economic
+11. **Favorite categories**: T20/cricket, crypto (BTC/ETH targets ≤1mo), economic
     (Fed/CPI/jobs), politics, WTA/tennis. Skip in-play micro-edge chases unless
     user explicitly calls live shots.
-11. **PRICE FILTER ≠ EDGE.** Cheap markets (sub-40c) are NOT automatically tradeable.
+12. **PRICE FILTER ≠ EDGE.** Cheap markets (sub-40c) are NOT automatically tradeable.
     No research/current-state bias = no trade = SKIP. A 2c YES on a 2% chance is a
     lottery ticket with no edge, not an opportunity (Filiz/Young/Zhukov losses).
 
 ## Workflow rules
 
-12. **Never claim ready without execution proof** (EXISTS ≠ WORKS). Verify fills
+13. **Never claim ready without execution proof** (EXISTS ≠ WORKS). Verify fills
     exchange-side (`/portfolio/positions` position_fp is ground truth), repair
     local DB (Kalshi returns `executed`, local may say RESTING).
 13. **Every user-picked trade carries the approved price into sig** so guards
