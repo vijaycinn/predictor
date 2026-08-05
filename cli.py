@@ -59,11 +59,16 @@ def cmd_proposals(args):
     if not pending:
         print("No pending proposals.")
         return
+    # VJ eval format (2026-08-05): every proposal carries a decision marker —
+    # 👍 = approve/buy, 👎 = reject/skip. One line each, decision first.
+    print(f"{len(pending)} pending proposal(s). Reply: 👍 <id> approve | 👎 <id> reject")
     for p in pending:
+        ev_c = p["ev_net"] * 100
         print(
-            f"#{p['id']:>3} {p['side']:>3} x{p['size']:.0f} @ {p['limit_price']:.3f} "
-            f"(${p['price_side'] * p['size']:.2f}) ev={p['ev_net']:.4f} conf={p['confidence']:.2f} | {p['question'][:55]}"
+            f"#{p['id']:>3} 👍 {p['side']:>3} x{p['size']:.0f} @ {p['limit_price']:.3f} "
+            f"(${p['price_side'] * p['size']:.2f}) ev={ev_c:+.1f}c conf={p['confidence']:.2f} | {p['question'][:60]}"
         )
+    print("👍 = APPROVE (place order) | 👎 = REJECT (skip)")
 
 
 def cmd_approve(args):
