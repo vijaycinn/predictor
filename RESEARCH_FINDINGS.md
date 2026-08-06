@@ -1,5 +1,17 @@
 # Research Assimilation — Kalshi Mechanics + External Playbooks (2026-08-06)
 
+**UPDATE 2026-08-06 (live verification, OTM 1c test):** order mechanics
+verified end-to-end on KXGOLDMON-26AUG3117-T3451.99 (deep OTM):
+1. `place_order(side=NO, price=0.99)` → filled buy NO @ 0.01 (`no_px 0.0100`,
+   `outcome_side: no`). The `1 - L` conversion in LiveExecutor is CORRECT.
+2. Create body `side: "no"` → **400 `invalid_order: side must be bid or ask`**.
+   API accepts only `bid|ask`; the mobile UI's "Buy No" label is display-only.
+3. Extra `action`/`outcome_side` body fields accepted but IGNORED — exchange
+   normalizes every order to `side: yes|no` + `action: buy|sell` from
+   book_side + price.
+4. V1 `POST /portfolio/orders` = 410 deprecated (Octagon bot's placeOrder
+   uses it — stale, don't copy).
+
 Sources (cloned to /data/workspace/research/):
 - `prediction-market-alpha-playbook` (AKCodez) — 7 markdown files, production lessons
 - `PolyKalshi_Client` (RohitDayanand) — Kalshi+Polymarket WS analytics, arb calculator, fee calc
