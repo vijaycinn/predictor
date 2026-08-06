@@ -186,6 +186,16 @@ def main():
         direction = "NEUTRAL — no clear geo signal"
     print(f"DIRECTION: {direction}")
 
+    # Geo direction lean for shortlist recommendation (VJ 2026-08-05):
+    # RISK-OFF = oil/gold/VIX up → recommend YES buys (aligned + ≤40c band).
+    # RISK-ON = oil/gold/VIX down → recommend NO buys (YES ≥60c, NO ≤40c).
+    if "RISK-OFF" in direction:
+        lean = "UP"
+    elif "RISK-ON" in direction:
+        lean = "DOWN"
+    else:
+        lean = None
+
     # Kalshi shortlist (oil/gold/VIX)
     print("\nKALSHI SHORTLIST (for geo trade direction):")
     try:
@@ -207,7 +217,13 @@ def main():
                     seen.add(ev)
                     bid = float(m.get("yes_bid_dollars") or 0)
                     ask = float(m.get("yes_ask_dollars") or 0)
-                    print(f"  {label} {m['ticker'][:46]:46s} bid={bid:.2f} ask={ask:.2f} close={m.get('close_time','')[:10]}")
+                    # 👍 = recommended: aligned with geo direction AND in YES ≤40c band
+                    rec = ""
+                    if lean == "UP" and bid > 0 and bid <= 0.40:
+                        rec = " 👍"
+                    elif lean == "DOWN" and ask >= 0.60:
+                        rec = " 👍"
+                    print(f"  {label} {m['ticker'][:46]:46s} bid={bid:.2f} ask={ask:.2f} close={m.get('close_time','')[:10]}{rec}")
                     n += 1
                     if n >= 4:
                         break
