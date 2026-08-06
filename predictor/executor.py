@@ -135,7 +135,54 @@ class LiveExecutor:
         from . import risk as risk_mod
         # CONSOLIDATED GATE (VJ 2026-08-02): every execution path runs ALL rules.
         risk_mod.pre_flight_check(sig, limit, self.cfg)
+        # DRAWDOWN CIRCUIT BREAKER (research 2026-08-06): block new live trades
+        # when portfolio drawdown from high-water >= max_drawdown_pct.
+        dd_ok, dd_reason = risk_mod.check_drawdown_circuit_breaker(self.conn, self.cfg)
+        if not dd_ok:
+            raise RuntimeError(dd_reason)
         ticker = sig["condition_id"]
+        # LIQUIDITY GATE (research 2026-08-06, thin-book trap): skip entries on
+        # spread >= max_spread_cents OR 24h vol < min_volume_24h — BUT only when
+        # notional is meaningful (>= liquidity_block_notional_usd). VJ's micro
+        # orders ($1-2) are hold-to-resolution by design (no stop-loss, RULES),
+        # which is the CORRECT treatment of thin books — exit cost irrelevant.
+        # Micro orders get a warning line; larger orders get blocked.
+        # VJ override via sig['override_liquidity'] (explicit bypass only).
+        if not sig.get("override_liquidity"):
+            try:
+                mkt = self.kalshi.get_json(f"/markets/{ticker}").get("market") or {}
+                exec_cfg = self.cfg.get("execution", {})
+                max_sp = float(exec_cfg.get("max_spread_cents", 5))
+                min_vol = float(exec_cfg.get("min_volume_24h", 500))
+                block_notional = float(exec_cfg.get("liquidity_block_notional_usd", 5.0))
+                try:
+                    yb = float(mkt.get("yes_bid_dollars") or 0)
+                    ya = float(mkt.get("yes_ask_dollars") or 0)
+                    spread_c = (ya - yb) * 100.0 if (yb and ya) else 0.0
+                except (TypeError, ValueError):
+                    spread_c = 0.0
+                try:
+                    vol24 = float(mkt.get("volume_24h_fp") or mkt.get("volume_24h") or 0)
+                except (TypeError, ValueError):
+                    vol24 = 0.0
+                notional = size * limit
+                if (spread_c > 0 and spread_c >= max_sp) or (vol24 > 0 and vol24 < min_vol):
+                    reason = []
+                    if spread_c > 0 and spread_c >= max_sp:
+                        reason.append(f"spread {spread_c:.1f}c >= {max_sp:.0f}c")
+                    if vol24 > 0 and vol24 < min_vol:
+                        reason.append(f"vol24h ${vol24:.0f} < ${min_vol:.0f}")
+                    if notional >= block_notional:
+                        raise RuntimeError(
+                            f"LIQUIDITY: {' AND '.join(reason)} (notional ${notional:.2f} >= ${block_notional:.0f}). "
+                            "Thin-book trap — skip (override_liquidity to bypass)."
+                        )
+                    print(f"[LIQUIDITY WARN] {' AND '.join(reason)} — notional ${notional:.2f} < "
+                          f"${block_notional:.0f}, hold-to-resolution micro order, proceeding")
+            except RuntimeError:
+                raise
+            except Exception:
+                pass  # quote fetch failure — don't block on data error
         # WALL CHECK (VJ 2026-08-05, Ribecai lesson): limit must rest at the
         # volume-weighted wall of the FULL ladder — never above it. Top-10
         # snapshots lie; the money sits at the full-ladder density peak.

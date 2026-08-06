@@ -192,24 +192,34 @@ def synthetic_arb(pair: dict, cfg: dict) -> dict | None:
 
     combos = [
         # (buy YES on Kalshi, buy NO on Polymarket)
-        ("k_yes__pm_no", kp["yes_ask"], pp["no_ask"]),
+        ("k_yes__pm_no", kp["yes_ask"], pp["no_ask"], "kalshi"),
         # (buy NO on Kalshi, buy YES on Polymarket)
-        ("k_no__pm_yes", kp["no_ask"], pp["yes_ask"]),
+        ("k_no__pm_yes", kp["no_ask"], pp["yes_ask"], "kalshi"),
     ]
     results = []
-    for name, a, b in combos:
+    for name, a, b, _kleg in combos:
         if a is None or b is None:
             continue
         combined = a + b
         gross_edge = 1.0 - combined
-        # fees: kalshi ~0; polymarket feeRate ~0-10% of p(1-p) (bps from venue data)
-        fee_rate = 0.0
+        # KALSHI FEE (research 2026-08-06): 0.07 * p * (1-p) per contract,
+        # 0.0175 for maker-fee tickers, rounded up to cent. Previously assumed
+        # $0 — that fabricated fake arbs. Polymarket taker ~2% * min(p,1-p).
+        from . import fees as fees_mod
+        k_ticker = k.get("ticker", "")
+        k_fee = fees_mod.kalshi_fee(a, 1.0, k_ticker)
+        pm_fee = 0.0
         if p.get("fees_enabled"):
-            fee_rate = (p.get("maker_base_fee") or 0.0) / 10000.0
-        fees = fee_rate * a * (1 - a) + fee_rate * b * (1 - b)
+            pm_rate = (p.get("maker_base_fee") or p.get("taker_base_fee") or 0.0) / 10000.0
+            pm_fee = pm_rate * min(b, 1.0 - b)
+        fees = k_fee + pm_fee
         # slippage: assume 1 tick (0.01) on the thin side, capped
         slippage = 0.01
         net = gross_edge - fees - slippage
+        # RESEARCH FLOOR: raw edge < 400bps = structurally net-negative after
+        # round-trip fees; < 200bps ALWAYS loses. Don't surface weak arbs.
+        if gross_edge < fees_mod.ARB_ALWAYS_LOSE_EDGE:
+            continue
         if net <= 0:
             continue
         results.append({
@@ -218,6 +228,8 @@ def synthetic_arb(pair: dict, cfg: dict) -> dict | None:
             "buy_b": {"venue": "polymarket", "price": b} if name.startswith("k_yes") else {"venue": "kalshi", "price": b},
             "combined_cost": round(combined, 4),
             "gross_edge": round(gross_edge, 4),
+            "kalshi_fee_est": round(k_fee, 4),
+            "pm_fee_est": round(pm_fee, 4),
             "fees_est": round(fees, 4),
             "slippage_est": round(slippage, 4),
             "net_edge": round(net, 4),

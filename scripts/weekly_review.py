@@ -42,6 +42,47 @@ def kalshi_import():
     from predictor import kalshi
     return kalshi
 
+
+def wilson_lower_bound(wins: int, n: int, z: float = 1.96) -> float:
+    """Wilson 95% lower bound on win rate (research 2026-08-06, METHODOLOGY.md).
+
+    Honest confidence for small N: N=5 100% WR -> lb 48% (random);
+    N=30 80% -> lb 62%; N=100 70% -> lb 60%. Point WR alone lies.
+    """
+    if n <= 0:
+        return 0.0
+    p = wins / n
+    denom = 1 + z * z / n
+    center = p + z * z / (2 * n)
+    margin = z * ((p * (1 - p) + z * z / (4 * n)) / n) ** 0.5
+    return max(0.0, (center - margin) / denom)
+
+
+def cohort_split(rows: list[dict]) -> list[dict]:
+    """Split resolved rows into cohorts by price bucket + side. Aggregate WR
+    hides sub-cohort alpha (research: 4/4 'killed' strategies had hidden
+    cohorts). Report Wilson lb95 per cohort, not just point WR."""
+    buckets = [(0.00, 0.20), (0.20, 0.40), (0.40, 0.60), (0.60, 0.80), (0.80, 1.01)]
+    cohorts = []
+    for lo, hi in buckets:
+        for side in ("YES", "NO", "any"):
+            sub = [r for r in rows if lo <= r["price"] < hi and
+                   (side == "any" or r["side"].upper() == side)]
+            if len(sub) < 3:
+                continue
+            w = sum(1 for r in sub if r["yes_won"])
+            pnl = sum(r["qty"] * (1.0 - r["price"]) if r["yes_won"] else -r["qty"] * r["price"] for r in sub)
+            invested = sum(r["qty"] * r["price"] for r in sub)
+            margin = (pnl / invested * 100.0) if invested > 0 else 0.0
+            cohorts.append({
+                "bucket": f"{lo*100:.0f}-{min(hi*100,100):.0f}c", "side": side,
+                "n": len(sub), "wins": w, "wr": w / len(sub) * 100,
+                "wilson_lb95": wilson_lower_bound(w, len(sub)) * 100,
+                "pnl": pnl, "margin_pct": margin,
+            })
+    cohorts.sort(key=lambda c: c["margin_pct"], reverse=True)
+    return cohorts
+
 def main():
     now = datetime.now(CT)
     start, end = week_bounds(now)
@@ -122,8 +163,19 @@ def main():
     if resolved_rows:
         rate = wins / len(resolved_rows) * 100
         margin = (total_pnl / invested * 100) if invested > 0 else 0.0
+        wlb = wilson_lower_bound(wins, len(resolved_rows)) * 100
         print(f"WINS: {wins}/{len(resolved_rows)} ({rate:.0f}%)   |   P&L: ${total_pnl:+.2f}")
+        print(f"WILSON lb95: {wlb:.0f}%  (honest confidence — point WR {rate:.0f}% can lie at small N)")
         print(f"** MARGIN OF PROFIT: {margin:+.1f}% on ${invested:.2f} invested **  <- THE metric")
+        # 5b. COHORT SPLIT (research 2026-08-06): aggregate WR hides sub-cohort
+        # alpha — split by price bucket + side, report Wilson lb95 per cohort.
+        cohorts = cohort_split(resolved_rows)
+        if cohorts:
+            print("\nCOHORT SPLIT (price bucket x side, N>=3, sorted by margin):")
+            for c in cohorts:
+                flag = " ◀ RETARGET?" if (c["n"] >= 5 and c["wilson_lb95"] >= 40 and c["margin_pct"] > 0) else ""
+                print(f"  {c['bucket']:8s} {c['side']:3s} N={c['n']:3d} WR {c['wr']:4.0f}% "
+                      f"lb95 {c['wilson_lb95']:3.0f}% P&L ${c['pnl']:+.2f} margin {c['margin_pct']:+.1f}%{flag}")
     else:
         print("NO RESOLVED TRADES in target week (nothing settled yet).")
         rate = 0.0

@@ -259,6 +259,46 @@ def check_risk_limits(conn, sig: dict, size_dollars: float, cfg: dict) -> tuple[
     return True, ""
 
 
+def check_drawdown_circuit_breaker(conn, cfg: dict, current_value: float | None = None) -> tuple[bool, str]:
+    """DRAWDOWN CIRCUIT BREAKER (research 2026-08-06, Octagon circuit-breaker).
+
+    Blocks NEW live trades when portfolio drawdown from high-water mark
+    exceeds max_drawdown_pct (default 20%). Tracks high-water via trades DB
+    (realized P&L vs capital). Paper mode unrestricted.
+
+    Returns (ok, reason). Caller must NOT place when ok=False.
+    """
+    if cfg.get("mode") != "live":
+        return True, ""
+    risk = cfg.get("risk", {})
+    max_dd = float(risk.get("max_drawdown_pct", 0.20))
+    capital = float(risk.get("capital_usd", 1000))
+
+    # high-water = capital + max cumulative realized P&L ever recorded
+    row = conn.execute(
+        "SELECT MAX(cum) as peak FROM ("
+        "  SELECT SUM(pnl) OVER (ORDER BY created_at) as cum FROM trades "
+        "  WHERE status IN ('CLOSED','OPEN','RESTING') AND pnl IS NOT NULL"
+        ")"
+    ).fetchone()
+    peak_pnl = float(row["peak"] or 0.0) if row else 0.0
+    high_water = capital + peak_pnl
+
+    # current = capital + all realized P&L so far (open positions mark at cost)
+    cur = conn.execute(
+        "SELECT COALESCE(SUM(pnl),0) FROM trades WHERE pnl IS NOT NULL"
+    ).fetchone()
+    realized = float(cur[0] or 0.0) if cur else 0.0
+    current_value = current_value if current_value is not None else capital + realized
+
+    if high_water <= 0:
+        return True, ""
+    dd = (high_water - current_value) / high_water
+    if dd >= max_dd:
+        return False, f"DRAWDOWN {dd:.1%} >= max {max_dd:.0%} — circuit breaker on (high-water ${high_water:.2f})"
+    return True, ""
+
+
 def limit_price(sig: dict, features: dict, cfg: dict) -> float:
     """Pick limit price: maker-friendly by default, nudge inside book by aggressiveness.
     NO side trades at 1 - YES book (Kalshi/Polymarket binary equivalence).

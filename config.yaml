@@ -36,6 +36,9 @@ execution:
   maker_min_volume: 100      # min contracts at chosen maker level
   max_price_raise_pct: 10   # HARD (VJ 2026-08-02): NEVER pay >10% above approved price. Below always OK (maker).
   wall_tolerance_cents: 2    # HARD (VJ 2026-08-05): limit may not rest more than 2c ABOVE full-ladder vol-weighted wall (Ribecai lesson: 0.76 bid vs 0.65 wall = overpay)
+  max_spread_cents: 5        # LIQUIDITY GATE (research 2026-08-06): skip new entries with spread >= 5c (thin-book trap)
+  min_volume_24h: 500        # LIQUIDITY GATE: skip new entries with 24h volume < $500 (thin-book trap; override_liquidity to bypass)
+  liquidity_block_notional_usd: 5.0  # LIQUIDITY GATE: only BLOCK above this notional; VJ micro orders ($1-2, hold-to-resolution) warn and proceed
   max_buy_price_cents: 40    # HARD BAND (VJ 2026-08-02): never buy YES above 40c unless explicit override
   min_win_prob: 0.50         # HARD (VJ 2026-08-02): NEVER bet if outcome prob <50%. Prob must come from independent source (Polymarket arb or verifiable research), not Kalshi book alone.
   aggressiveness: 0.5        # 0 = best price only, 1 = cross spread aggressively
@@ -49,6 +52,7 @@ risk:
   max_per_trade_frac: 0.20
   max_notional_frac: 0.60
   max_daily_loss_usd: 50
+  max_drawdown_pct: 0.20   # CIRCUIT BREAKER (research 2026-08-06): block new live trades when drawdown from high-water >= 20%
   max_per_event_frac: 0.30
   kelly_fraction: 0.25
   max_concurrent_positions: 12
