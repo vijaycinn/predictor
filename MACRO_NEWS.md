@@ -207,3 +207,9 @@ setup. Chicago PMI 57.6 = manufacturing expansion (only bright spot).
 
 
 
+
+## 2026-08-06 — Hormuz: Iran-Oman corridor plan + Strategic Control of Hormuz Act (Fars)
+- Iran-Oman discussing replacing N/S lanes with single central corridor; Iran oversees inbound, joint outbound. Transit fees on services, NOT % of cargo (contradicts Reuters 3-7% tariff).
+- Draft bill 'Strategic Control of Hormuz Act' under Majlis review: bar US/Israeli/military vessels; bar Israeli civilian ships; deny hostile-actions ships; fines up to 20% cargo value; expand Iran military role in Gulf navigation.
+- Read: NOT de-escalation. Institutionalizing Iranian control + weaponizing passage = escalation vector. US/Israel-barred = tanker disruption risk.
+- Kalshi: oil▲ gold▲ VIX▲ risk-OFF. WTI/gold above-strike plays strengthen IF act passes/enforced; de-escalation (deal) inverse. Contradictory Reuters tariff report = uncertainty.
