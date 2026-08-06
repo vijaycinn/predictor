@@ -109,16 +109,24 @@ the process is luck, not skill — both get analyzed.
    - PM-implied fair = PM bid/ask mid. Never hold a sell that prices below
      PM-implied YES prob.
 9b. **POLYMARKET US = EXECUTION VENUE #2 (VJ 2026-08-05).** New US-regulated
-   account (Ed25519 API keys, env `POLYMARKET_API_KEY`/`POLYMARKET_SECRET_KEY`).
-   ALL the same rules apply: limit-only, win floor ≥50% from independent source,
-   YES ≤40c band, ≤10% raise, full-ladder wall gate, $1/trade cap, per-buy
-   approval, TTL (1h default / event-aware), no margin, no stop-loss.
-   Execution = `scripts/pmus_cli.py order --place` (routes through
-   `PolymarketUSExecutor` = same `risk.pre_flight_check` + `risk.wall_check`
-   + `check_risk_limits` as Kalshi). pmxt is ANALYSIS ONLY for this venue.
-   Polymarket US gateway (gateway.polymarket.us, no auth) = market data;
-   api.polymarket.us = trading. Sports (NFL/MLB/tennis) heavy; prices tick
-   0.001; `{value, currency}` object shape on px/bestBid/bestAsk.
+  account (Ed25519 API keys, env `POLYMARKET_API_KEY`/`POLYMARKET_SECRET_KEY`).
+  ALL the same rules apply: limit-only, win floor ≥50% from independent source,
+  YES ≤40c band, ≤10% raise, full-ladder wall gate, $1/trade cap, per-buy
+  approval, TTL (1h default / event-aware), no margin, no stop-loss.
+  Execution = `scripts/pmus_cli.py order --place` (routes through
+  `PolymarketUSExecutor` = same `risk.pre_flight_check` + `risk.wall_check`
+  + `check_risk_limits` as Kalshi). pmxt is ANALYSIS ONLY for this venue.
+  Polymarket US gateway (gateway.polymarket.us, no auth) = market data;
+  api.polymarket.us = trading. Sports (NFL/MLB/tennis) heavy; prices tick
+  0.001; `{value, currency}` object shape on px/bestBid/bestAsk.
+9c. **PM.US TRADING FREEZE (VJ 2026-08-05, HARD).** NO orders on polymarket.us
+  until its volume proves real. Observation: July CPI YoY >3.3% strike showed
+  0.3 shares traded ($18.60) with OI 4,247 — quote-only market, no real
+  liquidity; Kalshi had the only real book (20K NO wall). PM.us listing prices
+  can be stale/unpriced → unexecutable + unreliable as fill reference. Analysis
+  and quote reads ALLOWED (gateway no-auth); order placement FORBIDDEN.
+  Revisit when a candidate market shows sustained volume (e.g. sports markets
+  per rule 9b may qualify; CPI-style macro listings do not yet).
 11. **Favorite categories**: T20/cricket, crypto (BTC/ETH targets ≤1mo), economic
     (Fed/CPI/jobs), politics, WTA/tennis. Skip in-play micro-edge chases unless
     user explicitly calls live shots.
