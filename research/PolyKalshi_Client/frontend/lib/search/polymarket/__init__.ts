@@ -1,1 +1,0 @@
-export { PolymarketSearchService } from './polymarket-search'
