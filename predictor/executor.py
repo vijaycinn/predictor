@@ -149,7 +149,13 @@ class LiveExecutor:
             if ladder:
                 risk_mod.wall_check(limit, sig.get("side") or "YES", ladder, self.cfg)
         hours_to_expiry = float(features.get("hours_to_expiry") or 0)
-        resp = self.kalshi.place_order(ticker, sig["side"], size, limit, hours_to_expiry=hours_to_expiry)
+        # Kalshi V2 quotes EVERYTHING from the YES side (docs: "ask means sell
+        # YES... buying NO at 1 - price"). For a BUY NO at limit L, the API
+        # price must be 1 - L (hit live 2026-08-06: NO@0.46 sent as ask@0.46
+        # filled as buy NO @ 0.54). reduce_only sells pass YES price directly
+        # (cli close) — this conversion is for the BUY path only.
+        api_price = (1.0 - limit) if sig.get("side") == "NO" else limit
+        resp = self.kalshi.place_order(ticker, sig["side"], size, api_price, hours_to_expiry=hours_to_expiry)
         order = resp.get("order") or resp
         order_id = order.get("order_id") or resp.get("order_id")
         if not order_id:
