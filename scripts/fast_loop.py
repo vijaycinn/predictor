@@ -87,15 +87,28 @@ except Exception as e:
         out_lines.append(f"[ARB] both feeds failed (pmxt: {str(e)[:40]}, predexon: {str(e2)[:40]})")
         res = {"opportunities": [], "total_arbs": 0}
 
-kalshi_exec = [o for o in res.get("opportunities", []) if o.get("kalshi_ticker")]
+# EXECUTABLE LEGS ONLY (VJ 2026-08-06): tradeable venues = kalshi + polymarket_us.
+# PM.com = reference/truth only; myriad/limitless/etc = discovery only. An arb
+# whose SELL leg sits on a non-executable venue is NOT tradeable — surfacing it
+# is noise that led to a wrong impression (hit live: buy kalshi sell myriad).
+# Rule 9: arb = SELL-ONLY ON KALSHI where possible; at minimum BOTH legs must
+# be executable.
+EXEC_VENUES = {"kalshi", "polymarket_us", "polymarket_usd"}
+kalshi_exec = [
+    o for o in res.get("opportunities", [])
+    if o.get("kalshi_ticker")
+    and str(o.get("sell_venue", "")).lower() in EXEC_VENUES
+    and str(o.get("buy_venue", "")).lower() in EXEC_VENUES
+]
 if kalshi_exec:
     for o in kalshi_exec[:3]:
         out_lines.append(
             f"[ARB:{arb_source[:8]}] {o['net_edge']*100:.2f}% EXECUTABLE K={o['kalshi_ticker']} "
             f"buy {o['buy_venue']}@{o['buy_price']:.3f} sell {o['sell_venue']}@{o['sell_price']:.3f} | {o['title_a'][:35]}"
         )
-# discovery-only arbs (no Kalshi leg = not executable) are NOT delivered —
-# VJ rule: suppress non-actionable noise. Keep quiet unless a tradeable leg exists.
+# discovery-only arbs (non-executable sell leg — myriad/polymarket.com/others)
+# are NOT delivered — VJ rule: suppress non-actionable noise. Silent unless a
+# fully-executable trade exists.
 
 # --- 3. Resolution tracking ---
 for venue, dbfile in (("polymarket", "predictor.db"), ("kalshi", "kalshi.db")):
