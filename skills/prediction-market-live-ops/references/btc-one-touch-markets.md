@@ -50,6 +50,15 @@ sitting at $62K. Likely to get swept soon."
    the 60K MINMON (or deeper strikes) becomes live. That's betting beyond the
    signal — requires its own evidence, not the pool level alone.
 
+## Daily range markets — NOT one-touch (VJ ask 2026-08-06)
+
+`KXBTC-<date>-B62250`-style markets ("Bitcoin price range on Aug 6 at 11am EDT",
+buckets like $62,200–62,299.99) are SAME-DAY snapshot markets, NOT one-touch:
+close at the snapshot time (15:00Z), zero volume/OI, dead book (bid 0.00/ask
+0.01). If a search surfaces a "62K" BTC ticker, check `close_time` + OI first —
+it's almost always this dead daily-range class. The only real expression of a
+$62K-pool sweep is the 60K MINMON strike (round down the $2.5K ladder).
+
 ## Placement recipe — VJ-explicit one-touch buy (verified 2026-08-04)
 
 VJ: "2 x for 60k at 0.45c for BTC minmon" — 2 contracts, `$60K` MINMON one-touch

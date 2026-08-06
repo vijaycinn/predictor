@@ -718,6 +718,27 @@ experiment/fix proposal loop, self-contained, no vague "improve things"
 phrases. VJ wants the FAILURE MECHANISM identified (which rule/guard was
 missed), not just "we lost money".
 
+## GH repo auto-sync — incremental backup (VJ 2026-08-06, HARD requirement)
+
+**VJ requires skills + tool changes synced to github.com/vijaycinn/predictor by
+DEFAULT for incremental backup.** Do not leave skill patches or code changes
+local-only. Mechanism:
+
+- `scripts/auto_sync.sh` (repo + `/data/.hermes/scripts/` copy): mirrors trading
+  skills (`/data/.hermes/skills/research/{predict,prediction-market-live-ops}`)
+  into `skills/`, `git add -A` (code/config/docs/skills), silent commit+push
+  when changed, silent when clean. Watchdog pattern: empty stdout = no change.
+- Cron `auto-sync-backup` (job 55b26aca885b): every 2h, `no_agent=true`,
+  deliver local. Zero LLM dependency — immune to provider outages.
+- Manual trigger anytime: `bash /data/.hermes/scripts/auto_sync.sh`.
+- Push failure prints `PUSH FAILED` + non-zero exit → cron alerts (broken
+  backup must not fail silently).
+- After ANY `skill_manage` patch in a session, the next 2h tick captures it;
+  for immediate backup run the script. GH repo is the durable copy — memory
+  (per-turn store) stays outside git by design.
+- Repo carries DISTILLED findings only (RESEARCH_FINDINGS.md, skills/, RULES) —
+  never vendored raw third-party repos (VJ rejected that 2026-08-06).
+
 ## Cron script copies — repo-path detection (`_repo_path` pattern, 2026-08-02)
 
 **CRON SCRIPT DIR = `/data/.hermes/scripts/` — NOT `~/.hermes/scripts/` (hit live 2026-08-03).**

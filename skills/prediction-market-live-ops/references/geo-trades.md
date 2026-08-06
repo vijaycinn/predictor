@@ -73,6 +73,23 @@ Killed the WTI ≥84.49 @ 10c spike-strike candidate that USO post-market +3.5%
 suggested. Lesson: geo feed BEFORE options/technicals; after-hours ETF quotes
 alone are fragile.
 
+## Institutionalization = ESCALATION even without strike words (2026-08-06)
+
+Forwarded geo batches (Fars/state media) can carry ESCALATION without classic
+keywords. Hormuz "central corridor" plan + 'Strategic Control of Hormuz Act'
+draft bill (bar US/Israeli/military vessels, fines up to 20% cargo) = Iran
+institutionalizing control + weaponizing passage — escalation vector, NOT
+de-escalation, despite "proposal/discussing/talks" framing. Two traps:
+1. **Draft ≠ law.** "Under Majlis review / draft bill" = not enacted; the
+   market may price the headline before passage. State the status in the read.
+2. **"Cooperation" framing ≠ risk-ON.** Iran+Oman jointly managing traffic
+   sounds like a deal but cements Iranian control + toll extraction. Compare
+   against the Reuters tariff report for divergence — contradicting sources =
+   uncertainty, keep the escalation lean but flag the delta.
+3. **Position risk check**: Hormuz escalation → gold▲ → existing gold NO
+   positions (below-strike) weaken. Always map forwarded geo to CURRENT open
+   positions, not just new shortlist candidates.
+
 ## Output style (VJ preference, embedded)
 
 Caveman terse, ACTION-first (BUY/SKIP first word), trend icons ▲▼ for streaks.
