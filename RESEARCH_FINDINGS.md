@@ -1,5 +1,15 @@
 # Research Assimilation — Kalshi Mechanics + External Playbooks (2026-08-06)
 
+**⚠️ SECURITY — else24/kalshi-market-bot REJECTED (2026-08-06):** repo is
+malware, not a trading bot. Deleted clone. IoCs: C2 `https://api.failproxy.space`
+(byte-obfuscated in syslib/system.py), TLS verification disabled
+(`check_hostname=False`, `CERT_NONE` in syslib/channel.py), reflective PE loader
+(syslib/image.py: VirtualAlloc/copy-segments/relocate/import-resolve/CreateThread,
+Windows-only), 14MB `base.pkg` ZIP that extracts `python.exe` and downloads
+"signed strategy bundles" on startup (syslib/__init__.py). Fake Textual TUI +
+strategy.py = cover. **Never clone/run third-party "Kalshi bots" without
+syslib-level review; verify what a repo actually imports before executing.**
+
 **UPDATE 2026-08-06 (live verification, OTM 1c test):** order mechanics
 verified end-to-end on KXGOLDMON-26AUG3117-T3451.99 (deep OTM):
 1. `place_order(side=NO, price=0.99)` → filled buy NO @ 0.01 (`no_px 0.0100`,
