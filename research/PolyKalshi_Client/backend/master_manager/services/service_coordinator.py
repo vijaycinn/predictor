@@ -1,0 +1,202 @@
+"""
+ServiceCoordinator - Manages cross-cutting services through event-driven architecture
+
+Coordinates services that span multiple platforms like arbitrage detection,
+ticker publishing coordination, and alert management.
+"""
+import logging
+from typing import Dict, Any, Optional
+
+from ..events.event_bus import EventBus
+from ..arbitrage_manager import ArbitrageManager
+
+logger = logging.getLogger(__name__)
+
+class ServiceCoordinator:
+    """
+    Coordinates cross-cutting services that operate across multiple platforms.
+    
+    Features:
+    - Event-driven service integration
+    - Arbitrage detection across platforms
+    - Alert management and forwarding
+    - Service lifecycle management
+    """
+    
+    def __init__(self, event_bus: EventBus, arbitrage_service: Optional[ArbitrageManager] = None):
+        """
+        Initialize the service coordinator.
+        
+        Args:
+            event_bus: Event bus for cross-component communication
+            arbitrage_service: Optional arbitrage manager (will create if None)
+        """
+        self.event_bus = event_bus
+        
+        # Initialize arbitrage service
+        if arbitrage_service:
+            self.arbitrage_service = arbitrage_service
+        else:
+            self.arbitrage_service = ArbitrageManager()
+        
+        # Service state tracking
+        self.services_started = False
+        
+        # Statistics
+        self.stats = {
+            "arbitrage_alerts": 0,
+            "kalshi_orderbook_updates": 0,
+            "polymarket_orderbook_updates": 0,
+            "service_errors": 0
+        }
+        
+        # Set up event subscriptions
+        self._setup_event_subscriptions()
+        
+        logger.info("ServiceCoordinator initialized")
+    
+    def set_platform_processors(self, kalshi_processor=None, polymarket_processor=None):
+        """
+        Set processor references in services that need them.
+        
+        Args:
+            kalshi_processor: Kalshi processor with get_orderbook() method
+            polymarket_processor: Polymarket processor with get_orderbook() method
+        """
+        # Set processors in arbitrage service
+        if kalshi_processor or polymarket_processor:
+            self.arbitrage_service.set_processors(kalshi_processor, polymarket_processor)
+            logger.info("Platform processors set in ServiceCoordinator services")
+        else:
+            logger.warning("No processors provided to ServiceCoordinator")
+    
+    def _setup_event_subscriptions(self):
+        """Set up event subscriptions for cross-cutting services."""
+        
+        # Note: ArbitrageManager now handles platform updates through its own event subscriptions
+        # (kalshi.ticker_update and polymarket.price_change events)
+        
+        # Error handling
+        self.event_bus.subscribe('kalshi.error', self._handle_platform_error)
+        self.event_bus.subscribe('polymarket.error', self._handle_platform_error)
+        
+        # Subscribe to arbitrage alerts from the arbitrage service
+        self.event_bus.subscribe('arbitrage.alert', self._handle_arbitrage_alert)
+        
+        logger.info("ServiceCoordinator event subscriptions set up")
+    
+    async def start_services(self):
+        """
+        Start cross-cutting services.
+        
+        Note: ArbitrageManager now handles platform data through event bus subscriptions.
+        """
+        if self.services_started:
+            logger.info("ServiceCoordinator services already started")
+            return
+        
+        try:
+            # Note: ArbitrageManager now handles platform data through event bus subscriptions
+            # No need to set processors directly
+            
+            self.services_started = True
+            logger.info("✅ ServiceCoordinator services started successfully")
+            
+        except Exception as e:
+            logger.error(f"❌ Failed to start ServiceCoordinator services: {e}")
+            raise
+    
+    async def stop_services(self):
+        """Stop all cross-cutting services."""
+        try:
+            # Note: ArbitrageManager doesn't have explicit stop method
+            # but we can reset its state if needed
+            
+            self.services_started = False
+            logger.info("ServiceCoordinator services stopped")
+            
+        except Exception as e:
+            logger.error(f"Error stopping ServiceCoordinator services: {e}")
+    
+    
+    async def _handle_platform_error(self, event_data: Dict[str, Any]):
+        """Handle platform errors for logging and monitoring."""
+        platform = event_data.get('platform', 'unknown')
+        error_info = event_data.get('error_info', {})
+        
+        logger.error(f"Platform error from {platform}: {error_info}")
+        self.stats["service_errors"] += 1
+        
+        # Could publish error events to external monitoring systems here
+        await self.event_bus.publish('service.platform_error', {
+            'platform': platform,
+            'error_info': error_info,
+            'coordinator': 'ServiceCoordinator'
+        })
+    
+    async def _handle_arbitrage_alert(self, alert_data: Dict[str, Any]):
+        """Handle arbitrage alerts and track statistics."""
+        try:
+            logger.info(f"Arbitrage alert: {alert_data}")
+            self.stats["arbitrage_alerts"] += 1
+            
+            # REMOVED: Redundant arbitrage.alert publishing that caused infinite recursion
+            # The ArbitrageDetector already publishes the 'arbitrage.alert' event
+            # Re-publishing it here created an infinite loop: 
+            # ArbitrageDetector -> publish 'arbitrage.alert' -> ServiceCoordinator -> publish 'arbitrage.alert' -> ServiceCoordinator -> ...
+            
+            # ServiceCoordinator now only tracks statistics and logs alerts
+            # Other components can subscribe directly to 'arbitrage.alert' from ArbitrageDetector
+            
+        except Exception as e:
+            self.stats["service_errors"] += 1
+            logger.error(f"Error handling arbitrage alert: {e}")
+    
+    def get_stats(self) -> Dict[str, Any]:
+        """Get service coordinator statistics."""
+        arbitrage_stats = self.arbitrage_service.get_stats() if self.arbitrage_service else {}
+        
+        return {
+            "services_started": self.services_started,
+            "coordinator_stats": self.stats,
+            "arbitrage_stats": arbitrage_stats,
+            "event_bus_stats": self.event_bus.get_stats()
+        }
+    
+    # Arbitrage service delegation methods (for backward compatibility)
+    def add_arbitrage_market_pair(self, market_pair: str, kalshi_ticker: str, polymarket_yes_asset_id: str, polymarket_no_asset_id: str):
+        """Add a market pair for arbitrage monitoring."""
+        return self.arbitrage_service.add_market_pair(market_pair, kalshi_ticker, polymarket_yes_asset_id, polymarket_no_asset_id)
+    
+    def remove_arbitrage_market_pair(self, market_pair: str):
+        """Remove a market pair from arbitrage monitoring."""
+        return self.arbitrage_service.remove_market_pair(market_pair)
+    
+    async def check_arbitrage_for_pair(self, market_pair: str):
+        """Check arbitrage opportunities for a specific market pair."""
+        return await self.arbitrage_service.check_arbitrage_for_pair(market_pair)
+    
+    async def check_all_arbitrage_opportunities(self):
+        """Check arbitrage opportunities for all registered market pairs."""
+        return await self.arbitrage_service.check_all_arbitrage_opportunities()
+    
+    def get_arbitrage_stats(self):
+        """Get arbitrage manager statistics."""
+        return self.arbitrage_service.get_stats()
+    
+    def setup_token_event_subscriptions(self):
+        """
+        Ensure all managed services are subscribed to token events.
+        Each service manages its own state atomically.
+        
+        Note: ArbitrageManager doesn't subscribe to token events directly.
+        Arbitrage pair management is handled by MarketsCoordinator based on 
+        market connection state (both platforms must be connected).
+        """
+        try:
+            # ArbitrageManager pair lifecycle is managed by MarketsCoordinator
+            # based on market connection state, not token events directly
+            logger.info("✅ ServiceCoordinator token event setup complete (ArbitrageManager managed by MarketsCoordinator)")
+            
+        except Exception as e:
+            logger.error(f"❌ Error setting up token event subscriptions in ServiceCoordinator: {e}")

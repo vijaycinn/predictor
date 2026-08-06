@@ -1,0 +1,119 @@
+import type { Database } from 'bun:sqlite';
+
+export interface OctagonReport {
+  report_id: string;
+  ticker: string;
+  event_ticker: string;
+  model_prob: number;
+  market_prob?: number | null;
+  mispricing_signal?: string | null;
+  drivers_json?: string | null;
+  catalysts_json?: string | null;
+  sources_json?: string | null;
+  resolution_history_json?: string | null;
+  contract_snapshot_json?: string | null;
+  raw_response?: string | null;
+  model_accuracy?: number | null;
+  variant_used?: string | null;
+  fetched_at: number;            // Unix seconds — when WE pulled this report ("Refreshed")
+  expires_at: number;
+  analysis_last_updated?: string | null;  // Octagon's upstream model-run timestamp ("Model run")
+}
+
+export function insertReport(db: Database, report: OctagonReport): void {
+  db.prepare(`
+    INSERT INTO octagon_reports
+      (report_id, ticker, event_ticker, model_prob, market_prob, mispricing_signal,
+       drivers_json, catalysts_json, sources_json, resolution_history_json,
+       contract_snapshot_json, raw_response, model_accuracy, variant_used, fetched_at, expires_at)
+    VALUES
+      ($report_id, $ticker, $event_ticker, $model_prob, $market_prob, $mispricing_signal,
+       $drivers_json, $catalysts_json, $sources_json, $resolution_history_json,
+       $contract_snapshot_json, $raw_response, $model_accuracy, $variant_used, $fetched_at, $expires_at)
+    ON CONFLICT(report_id) DO UPDATE SET
+      ticker = EXCLUDED.ticker,
+      event_ticker = EXCLUDED.event_ticker,
+      model_prob = EXCLUDED.model_prob,
+      market_prob = EXCLUDED.market_prob,
+      mispricing_signal = EXCLUDED.mispricing_signal,
+      drivers_json = EXCLUDED.drivers_json,
+      catalysts_json = EXCLUDED.catalysts_json,
+      sources_json = EXCLUDED.sources_json,
+      resolution_history_json = EXCLUDED.resolution_history_json,
+      contract_snapshot_json = EXCLUDED.contract_snapshot_json,
+      raw_response = EXCLUDED.raw_response,
+      model_accuracy = EXCLUDED.model_accuracy,
+      variant_used = EXCLUDED.variant_used,
+      fetched_at = EXCLUDED.fetched_at,
+      expires_at = EXCLUDED.expires_at
+  `).run({
+    $report_id: report.report_id,
+    $ticker: report.ticker,
+    $event_ticker: report.event_ticker,
+    $model_prob: report.model_prob,
+    $market_prob: report.market_prob ?? null,
+    $mispricing_signal: report.mispricing_signal ?? null,
+    $drivers_json: report.drivers_json ?? null,
+    $catalysts_json: report.catalysts_json ?? null,
+    $sources_json: report.sources_json ?? null,
+    $resolution_history_json: report.resolution_history_json ?? null,
+    $contract_snapshot_json: report.contract_snapshot_json ?? null,
+    $raw_response: report.raw_response ?? null,
+    $model_accuracy: report.model_accuracy ?? null,
+    $variant_used: report.variant_used ?? null,
+    $fetched_at: report.fetched_at,
+    $expires_at: report.expires_at,
+  });
+}
+
+export function getReport(db: Database, reportId: string): OctagonReport | null {
+  return db.query('SELECT * FROM octagon_reports WHERE report_id = $id').get({
+    $id: reportId,
+  }) as OctagonReport | null;
+}
+
+export function getLatestReport(db: Database, ticker: string): OctagonReport | null {
+  return db.query(
+    'SELECT * FROM octagon_reports WHERE ticker = $ticker ORDER BY fetched_at DESC LIMIT 1'
+  ).get({ $ticker: ticker }) as OctagonReport | null;
+}
+
+export function updateReportModelProb(db: Database, reportId: string, modelProb: number): void {
+  db.prepare(
+    `UPDATE octagon_reports SET model_prob = $model_prob WHERE report_id = $report_id`,
+  ).run({ $report_id: reportId, $model_prob: modelProb });
+}
+
+/**
+ * Returns the cache TTL (in seconds) based on how far away the market close time is.
+ *
+ * | Time to close | TTL   |
+ * |---------------|-------|
+ * | <24h          | 1h    |
+ * | 1–7d          | 6h    |
+ * | 7–30d         | 24h   |
+ * | 30d+          | 48h   |
+ * | Already closed| 1h    |
+ */
+export function getTtlForCloseTime(secondsUntilClose: number): number {
+  if (secondsUntilClose <= 0) return 3600;           // already closed → 1h
+  if (secondsUntilClose < 86400) return 3600;        // <24h → 1h
+  if (secondsUntilClose < 7 * 86400) return 21600;   // 1–7d → 6h
+  if (secondsUntilClose < 30 * 86400) return 86400;  // 7–30d → 24h
+  return 172800;                                      // 30d+ → 48h
+}
+
+/**
+ * Returns true if no report exists for this ticker, or the latest is older than the TTL.
+ * When closeTimeEpoch is provided, uses tiered TTL based on market close proximity.
+ * Otherwise falls back to 24h.
+ */
+export function isStale(db: Database, ticker: string, nowSeconds?: number, closeTimeEpoch?: number): boolean {
+  const now = nowSeconds ?? Math.floor(Date.now() / 1000);
+  const report = getLatestReport(db, ticker);
+  if (!report) return true;
+  const ttl = closeTimeEpoch != null
+    ? getTtlForCloseTime(closeTimeEpoch - now)
+    : 86400;
+  return report.fetched_at + ttl < now;
+}
