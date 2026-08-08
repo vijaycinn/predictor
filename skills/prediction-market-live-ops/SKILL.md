@@ -25,7 +25,13 @@ execution/lifecycle complement.
 - **Create: POST `/portfolio/events/orders`** — legacy POST `/portfolio/orders`
   returns **410 `deprecated_v1_order_endpoint`** (deprecated May 2026). Any doc
   showing `/portfolio/orders` for CREATE is stale.
-- **List: GET `/portfolio/orders`** — unchanged, still works.
+- **POST response is NOT self-describing** (verified 2026-08-08): returns
+  `order_id` but `status/side/count/price` all null. ALWAYS follow up with GET
+  to verify state — never report "placed/resting/filled" from the POST reply.
+- **List: GET `/portfolio/orders`** — unchanged, still works. Detail:
+  **GET `/portfolio/orders/{order_id}` WORKS; GET
+  `/portfolio/events/orders/{order_id}` 404s** (verified live 2026-08-08) —
+  even though CREATE is events-scoped, lookup uses the legacy GET path.
 - **Cancel: DELETE `/portfolio/events/orders/{order_id}`**.
 - Positions: GET `/portfolio/positions`; Fills: GET `/portfolio/fills`;
   Balance: GET `/portfolio/balance` — **returns CENTS** (6099 = $60.99).
@@ -157,6 +163,12 @@ VJ sends `kalshi.com/markets/...` links + phone screenshots frequently. Flow:
 3. Get live score (tennisstats/Robinhood work; ESPN misses challengers;
    Sofascore 403). Check format first: men's GS Bo5, men's non-GS Bo3, women
    Bo3 — same score ≠ same prob across formats.
+   **PM anchor may NOT exist for WTA/ATP singles** (verified 2026-08-08
+   Kostyuk/Swiatek Toronto): gamma public-search returned 500 then empty,
+   pmxt fetchEvents(polymarket) → [], router fetchEventMatches → []. No
+   cross-venue truth → label analysis research-only, default SKIP unless the
+   research edge is solid. Don't block the hunt on gamma — it 500s on flaky
+   days; try pmxt router, then move on.
 4. Produce a CAVEMAN CARD (below) — NO markdown tables, VJ reads on phone.
 5. Rule-check the pick: est ≥50% from independent source, YES ≤40c band,
    ≤10% raise — report which gate blocks if SKIP.
@@ -560,6 +572,14 @@ Fix: **BUY NO at limit L → send `price = 1 - L`**. Applied in
 `place_order` itself stays raw (YES-side); reduce_only exits pass YES price
 directly (cli close). Verify after placement: resting order must show
 `no_price_dollars == intended NO limit`, `expiration_time` = target TTL.
+
+**FRESH SELL (non-exit) = YES price direct too** (verified live 2026-08-08):
+`place_order(ticker, "SELL", 1, 0.44)` → body `{side: "ask", price: "0.4400"}`,
+order object `action: sell, book_side: ask` — correct sell-YES @ 0.44. The 1−L
+conversion applies ONLY to BUY NO; any sell (exit or fresh) quotes the YES side
+directly. Resting sell confirmed via GET `/portfolio/orders/{id}`:
+`initial_count_fp 1.00, fill_count_fp 0.00` = resting, TTL from
+`expiration_time`.
 
 **VERIFIED LIVE 2026-08-06 (OTM 1c test, T3451.99)**: sent
 `place_order(NO, 0.99)` → filled buy NO @ 0.01 (`no_px 0.0100`,
