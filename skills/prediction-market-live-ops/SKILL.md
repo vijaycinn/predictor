@@ -957,7 +957,9 @@ with synthetic ladders, live smoke):
 - `references/live-tennis-scores.md` — tennis format rules (Bo5/Bo3), live
   score sources (tennisstats/Robinhood work, ESPN misses challengers, Sofascore
   403), score-state → win-prob heuristic, TTL-by-score-state, live coin-flip
-  structural SKIP under band+floor rules.
+  structural SKIP under band+floor rules, + pre-match research (stevegtennis.com
+  H2H/form/event-stats incl. ITF/M25, sofascore start-time snippets, surface
+  check) + ITF/doubles ticker prefixes.
 - `references/cross-venue-live-flip.md` — PMXT-vs-Kalshi live flip hunt
   (2026-08-04): PMXT stale-event trap, native Kalshi series enumeration +
   orderbook_fp string-field traps, Polymarket gamma recipe (UA header, outcomes

@@ -19,8 +19,32 @@ Consequence for score-state edge:
 - Same score means different probabilities in Bo5 vs Bo3 — always confirm
   format before quoting a win prob from the score.
 - Kalshi tickers: `KXATPCHALLENGERMATCH` (Bo3), `KXATPMATCH` (could be Bo3
-  tour or Bo5 GS — check event), `KXWTAMATCH` (Bo3), set-winner series
+  tour or Bo5 GS — check event), `KXWTAMATCH` (Bo3), `KXITFMATCH` (ITF men —
+  M25/Futures level, Bo3), `KXATPDOUBLES`/doubles markets (thin — expect
+  $500-600 vol, no PM anchor), set-winner series
   (`KXATPSETWINNER`, `KXWTASETWINNER`).
+
+## Pre-match research sources (verified 2026-08-08, M25/ITF + main tour)
+
+- **stevegtennis.com `/head-to-head/men/<PlayerA>/<PlayerB>/`** — ✅ best
+  single source for match reads: H2H (0-0 = first meeting), recent-form
+  icons, career W/L by surface + YTD W/L, age, prize money, and
+  CURRENT-TOURNAMENT event stats (matches played, total court time, service
+  hold %, BP saved, deciding-set W/L). Works for obscure players — verified
+  on M25+H Tauste (Almazan Valiente #528, Sanchez Quilez #440) and Montreal
+  (Lehecka #12 vs Jodar #9). Find via web_search "`<A>` vs `<B>` prediction
+  H2H".
+- **Sofascore search snippets for START TIMES** — direct api.sofascore.com
+  403s, but sofascore.com match pages surface in web_search results with
+  start time in the snippet ("starts on 8 Aug 2026 at 16:30 UTC"). Confirms
+  pre-match vs in-play BEFORE ordering.
+- **Surface check before read**: M25+H Tauste looked like clay (Spain) but is
+  HARD — stevegtennis marks surface per event; career hard-vs-clay splits
+  only matter once surface is right. Verify surface, don't assume.
+- **ITF/M25 read**: career-high rank gap (528 vs 440) = main signal; YTD form
+  (71% vs 66%) + SF court time (2:51 vs 2:09 = fatigue edge) fill it. These
+  markets have NO PM.com/PM.us anchor — research-only independent prob, and
+  the market usually prices it fair → SKIP is common.
 
 ## Live score sources (verified 2026-08-02)
 
