@@ -187,6 +187,18 @@ the process is luck, not skill — both get analyzed.
     autoresearch style (state → analyze → hypothesize → fix proposal).
     **Implementation changes ONLY on VJ approval** — the review proposes, VJ
     disposes. Tool: scripts/weekly_review.py + agent report.
+20. **VIX REGIME GATE (VJ cheat code, 2026-08-09, HARD).** VIX = fear gauge.
+    - **VIX > 30 = BUY zone** — panic. Contrarian play: buy cheap
+      recovery/risk-on candidates. Fear prices assets below fair value.
+    - **VIX < 15 = TRIM zone** — complacency. Trim open winners, raise cash,
+      NO new aggressive long entries into euphoria.
+    - **15-30 = NEUTRAL** — normal hunt rules.
+    Applies as a FILTER on top of all other gates (limit-only, win floor,
+    band, wall) — never a standalone trade signal. Direction logic: VIX > 30
+    (risk-OFF panic) → cheap YES recovery bets; VIX < 15 (risk-ON euphoria) →
+    take-profit / reduce exposure.
+    Tool: `scripts/vix_regime.py` (Yahoo ^VIX, live-verified 2026-08-09:
+    VIX 14.9 = TRIM zone). Run at hunt start; quote regime in proposals.
 
 ## Retrospective — 2026-08-02 losses (drives rules above)
 
