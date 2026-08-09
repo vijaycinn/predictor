@@ -6,7 +6,14 @@ flip candidates that Kalshi's 2h scan loop never surfaces.
 
 ## Cron
 
-- Job: `live-flip-scan` (id 60dc2f20624f), schedule `*/30 * * * *`, no_agent=true.
+- Job: `live-flip-scan` (**id 515b98b98b6f — recreated 2026-08-09**; the
+  previously-documented id 60dc2f20624f was MISSING from the cron job list
+  entirely — docs said it existed, `cronjob list` showed it didn't), schedule
+  `*/30 * * * *`, no_agent=true.
+- **Verify cron existence via `cronjob action=list`, never trust reference
+  docs** (hit 2026-08-09: the fix to live_flip_scan.py was pointless until the
+  job was recreated — a documented-but-missing cron silently means the scan
+  never ran). After creating, `cronjob action=run` to confirm execution.
 - Script: **`/data/.hermes/scripts/live_flip_scan.py`** — the scheduler's script
   dir (SKILL.md cron-dir lesson 2026-08-03: NOT `~/.hermes/scripts/`, which
   expands to `/data/.hermes/home/.hermes/scripts/` on this box). Repo copy:

@@ -465,13 +465,20 @@ Usage:
 `python3 scripts/search_market.py cazacu --min-vol 1000`
 Never hand-roll the search loop — the script is the fixed, verified path.
 
-## Live-option flip scan (cron, VJ 2026-08-02)
+## Live-option flip scan (manual only, VJ 2026-08-09)
 
-Recurring watchdog (`live-flip-scan`, every 30m, no_agent) surfacing LIVE
-markets where odds can flip for 30m/60m TTL limit plays. Presents only
-07:00-22:00 CT (VJ waking hours), silent otherwise. Flip zone = mid 0.35-0.65,
-spread <=3c, depth >=200, vol >=$2k; suggestion = cheap-side limit <=40c.
-Full criteria + cron wiring: `references/live-flip-scan.md`.
+**MANUAL INVOCATION ONLY (VJ 2026-08-09): cron REMOVED** — VJ wants to run it
+on demand ("scan live tennis"). No cron job. Run:
+`python3 /data/workspace/predictor/scripts/live_flip_scan.py`
+or ask Mando to scan. Surfaces LIVE markets where odds can flip for 30m/60m
+TTL limit plays. Presents only 07:00-22:00 CT (VJ waking hours), silent
+otherwise. Flip zone = mid 0.35-0.65, spread <=3c, depth >=200, vol >=$2k;
+suggestion = cheap-side limit <=40c.
+
+**2026-08-09 fix (was broken):** hardcoded `26AUG02` in the today-filter made
+it silently scan LAST WEEK — returned "no flip-zone markets" while 100+ live.
+Now dynamic `today_str = now_ct.strftime("%y%b%d").upper()` + live `/events`
+fallback when cache empty. Verified: found live markets same-day.
 Script: `~/.hermes/scripts/live_flip_scan.py` (repo copy is source of truth).
 
 **BEFORE suggesting any live tennis: check format + live score.** Men's GS =
