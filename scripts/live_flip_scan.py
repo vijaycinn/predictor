@@ -42,6 +42,9 @@ if not (7.0 <= hour <= 22.0):
     # silent — watchdog pattern, empty stdout = no delivery
     sys.exit(0)
 
+# today in Kalshi ticker format (e.g. 26AUG09) — 2026-08-09 fix
+today_str = now_ct.strftime("%y%b%d").upper()
+
 
 def _sign(ts, method, path):
     msg = f"{ts}{method}{path}".encode()
@@ -88,7 +91,18 @@ def main():
         pass
 
     today_evs = [e for e in evs if any(e.upper().startswith(p) for p in series_prefixes)
-                 and "26AUG02" in e.upper()]
+                 and today_str in e.upper()]
+    # also fetch today's events live if cache is empty/stale (2026-08-09 fix:
+    # hardcoded "26AUG02" made the scan silently scan last week)
+    if not today_evs:
+        try:
+            d = _get("/events", {"limit": 200})
+            for ev in (d or {}).get("events") or []:
+                t = (ev or {}).get("ticker") or ""
+                if any(t.upper().startswith(p) for p in series_prefixes) and today_str in t.upper():
+                    today_evs.append(t)
+        except Exception:
+            pass
 
     rows = []
     for ev in today_evs:
