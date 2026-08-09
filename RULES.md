@@ -62,6 +62,17 @@ the process is luck, not skill — both get analyzed.
    would expire 1.5h before the 21:00Z call; VJ set 8h to survive to start.
 6. **$1/trade cap.** `risk.max_trade_usd: 1.0`. No margin ever (code asserts).
    Position cap per config. No stop-loss — ride to resolution.
+6b. **TAKE-PROFIT — 91c+ EXIT (VJ 2026-08-09, Sabalenka lesson, HARD).** Live
+   sports position whose market YES price reaches **≥0.91** → place reduce_only
+   IOC sell at the bid wall, lock the profit. Do NOT ride a 91c+ winner to
+   resolution. Rationale: at ≥91c, sell EV ≈ ride EV minus variance; the 5-8%
+   blowup tail turns +45c locked into -45c (Sabalenka 2×@0.46 → decider loss,
+   $1.84 swing). Winner-side only — this is NOT a stop-loss; rule 6 (ride
+   losers) unchanged. Mechanics (verified live 2026-08-02): reduce_only
+   requires IOC, omit expiration_time, selling YES = side NO (body ask),
+   exit price = full-ladder bid wall (`kalshi.get_orderbook_full`), NOT the
+   stale quote endpoint. Scale-out optional (sell half @91c, ride half).
+   Threshold 91c = one-way; no re-entry below.
 7. **NEVER BET IF OUTCOME PROBABILITY < 50%.** Applies to ALL bets (not just live).
    - The probability of each outcome must be individually established from an
      INDEPENDENT source: a different prediction market (Polymarket cross-venue =
