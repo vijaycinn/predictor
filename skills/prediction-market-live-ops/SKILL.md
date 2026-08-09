@@ -129,6 +129,18 @@ NOT a stop-loss; losers still ride to resolution (rule 6).
     with TTL). Fills only when market touches it. This is the "place 2x@0.91
     after fill and exit if limit hits" pattern VJ asked for — the limit order
     IS the conditional. No reduce_only (reduce_only requires IOC).
+- **SCALABLE EXIT = RESTING LIMIT + FILL CALLBACK (VJ Q&A 2026-08-09, HARD):**
+  IOC is NOT scalable — needs constant wall polling, price≥limit at placement,
+  N orders = N polls. Correct design: resting limit per position + Kalshi
+  WebSocket `fill` channel for order confirmation. One WS connection subscribes
+  all tickers; fill events arrive as callbacks — no polling, parallel-safe.
+  **WS VERIFIED LIVE 2026-08-09** (`scripts/ws_probe.py`): auth = same RSA-PSS
+  headers as REST (sign `ts + GET + /trade-api/ws/v2`, KALSHI-ACCESS-KEY/
+  SIGNATURE/TIMESTAMP), endpoint `wss://api.elections.kalshi.com/trade-api/ws/v2`,
+  subscribe `{"id":1,"cmd":"subscribe","params":{"channels":["orderbook_delta","fill"],"market_tickers":[...]}}`
+  → `subscribed` ack, `orderbook_snapshot`, `orderbook_delta` (seq-ordered),
+  `fill` events. Order confirmation for take-profit exits comes from the WS
+  `fill` message, not REST polling.
 - Tool: `scripts/take_profit.py` (repo + cron copy pattern). Dry-run default;
   `--place` executes dual-mode: IOC when wall≥min, resting limit otherwise;
   `--half` sells half; `--ttl-h` sets resting TTL. Run it during live sports
