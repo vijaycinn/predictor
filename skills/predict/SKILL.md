@@ -151,6 +151,19 @@ VJ opened a Polymarket US account (US-regulated). Analysis + trading wired:
 - Rate limits: 20 rps/key. 5s latency stopgap on orders = transient reject,
   do NOT back off (pure cancels exempt).
 
+## VIX regime gate (VJ cheat code, rule 20, 2026-08-09)
+
+Run `python3 scripts/vix_regime.py` at hunt start. Quote regime in proposals:
+
+- **VIX > 30 = BUY zone** (panic) — contrarian: cheap YES recovery/risk-on
+  candidates. Fear misprices.
+- **VIX < 15 = TRIM zone** (complacency) — trim winners, raise cash, no new
+  aggressive longs. Current read 2026-08-09: VIX 14.9 = TRIM.
+- 15-30 = NEUTRAL — normal rules.
+
+Filter on top of all gates, never standalone. Direction: VIX>30 → cheap YES
+recovery; VIX<15 → take-profit/reduce (aligns with rule 6b exit plan).
+
 ## Gotchas
 
 - **Approve flow dilutes manual bias**: `approve` re-checks EV with engine that blends llm_override at `llm_weight` (0.30) vs market 0.55 — a 9c research edge can come back as HOLD/SKIP and fail closed. For VJ-explicit picks, bypass: insert_proposal is not enough; place directly via `LiveExecutor.execute(sig, size, limit, feats)` with `sig.condition_id/side/ev_calc.price_side`. Then repair local trade status (exchange returns `executed`, local stays RESTING — set OPEN + fill_price manually).
