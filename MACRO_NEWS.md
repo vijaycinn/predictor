@@ -213,3 +213,19 @@ setup. Chicago PMI 57.6 = manufacturing expansion (only bright spot).
 - Draft bill 'Strategic Control of Hormuz Act' under Majlis review: bar US/Israeli/military vessels; bar Israeli civilian ships; deny hostile-actions ships; fines up to 20% cargo value; expand Iran military role in Gulf navigation.
 - Read: NOT de-escalation. Institutionalizing Iranian control + weaponizing passage = escalation vector. US/Israel-barred = tanker disruption risk.
 - Kalshi: oil▲ gold▲ VIX▲ risk-OFF. WTI/gold above-strike plays strengthen IF act passes/enforced; de-escalation (deal) inverse. Contradictory Reuters tariff report = uncertainty.
+
+## 2026-08-09 — US–Iran weekend recap (DeItaone via VJ)
+
+**Headline: no breakthrough. Hormuz stays closed, regional attacks resume.**
+
+READ:
+- Trump "semi-negotiating", blockade squeezing Iran economy, expects it to "work out" — chess-game framing. Mild de-escalation TONE, no action.
+- Iran: no talks currently (Araghchi), wants concessions BEFORE reopening (force withdrawal, blockade lift, sanctions relief, reparations) — reopening conditional, not imminent.
+- Iran-Oman maritime route deal "very close" but NOT immediate Hormuz reopening → supply risk persists.
+- Escalation: vessel struck near Oman, Houthi attacks resumed (Mocha, Saudi Jazan fire). Pressure +.
+- Net: MIXED-to-ESCALATION. Risk-OFF lean holds: oil ▲ gold ▲ VIX ▲. Trump words = biggest downside catalyst if a deal lands.
+
+KALSHI IMPLICATION:
+- Hormuz-closed regime → oil/gold elevated. Our gold NO positions (T4251.99 NO @0.46, T4291.99 NO @0.52 = gold BELOW strikes by Aug 31) ride AGAINST this — underwater while gold stays bid. Flag, don't hide.
+- No 7pm geo window trade here — feed log only (rule 18).
+- Next catalyst: Iran-Oman agreement OR actual reopening → risk-ON, oil ▼ gold ▼; that's the signal to re-check the NOs.
