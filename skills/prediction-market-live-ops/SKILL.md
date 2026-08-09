@@ -102,6 +102,14 @@ keep `risk.pre_flight_check` as the gate. Detail: `references/earnings-mention-m
   place_order calls must uppercase side.
 - Exits fill at/better than price immediately; verify via `/portfolio/positions`
   (qty 0.00 = flat; zero-qty ghost entries can still appear, check `position_fp`).
+- **NEVER exit a binary within ~2c of entry price — fees guarantee the loss.**
+  Hit live 2026-08-01/02 (ZAR, first real order): bought YES 1@0.59, sold 1@0.58
+  next day, market then resolved YES at 0.99. Realized −$0.0441 = −7.5% margin on
+  the week's only trade; round-trip fees 0.017+0.0171 = 3.4c on $0.59 stake =
+  5.8% drag. Exiting at par = pay fees for zero edge. Rule 6 (ride to
+  resolution) is the default; rule 6b take-profit only ≥0.91. If an exit
+  rationale exists, log it — DB has no exit-reason field, so "why did we sell
+  a winner" is unanswerable afterwards.
 
 ## TAKE-PROFIT — 91c+ exit (VJ rule 6b, 2026-08-09, Sabalenka lesson, HARD)
 
@@ -774,19 +782,35 @@ skills loaded, delivers to origin.
 
 Flow (scripts/weekly_review.py, repo + ~/.hermes/scripts/):
 1. Week bounds: review the week BEFORE the previous Sunday. Run on Sun Aug 9
-   → covers Jul 26-Aug 2 (Sunday-Saturday). `week_bounds(now)` computes
-   this_sun → prev_sun → target = prev_sun−7d .. prev_sun.
+   → covers Jul 26-Aug 1 (Sun-Sat). `week_bounds(now)` computes
+   this_sun → prev_sun → target = prev_sun−7d .. prev_sun (end EXCLUSIVE =
+   prev Sunday 00:00 CT). ⚠️ Docstring in the script says "Aug 2-Aug 8" —
+   WRONG, stale. Code + this reference agree on [prev_sun−7d, prev_sun).
+   Consequence: the first live day (Aug 2 batch: BTC one-touch, Fed,
+   challengers, Ribero, WTI/Brent) lands in the NEXT review's window, not
+   the one run on Sun Aug 9.
 2. Pull fills: `kalshi.get_fills(limit=1000)` (exchange = source of truth),
    filter created_time to target week (UTC→CT conversion).
-3. Success rate + P&L: resolve each market (`fetch_market_by_id` →
-   `outcome_prices[0] == 1.0`), win = qty×(1−price), loss = −qty×price.
-4. Failure-mode split: mechanical markers = losses on high buy prices
+3. Success rate + P&L: resolve each market — **RAW `status`/`result` fields
+   are truth, NOT the normalized market object** (verified 2026-08-09):
+   `fetch_market_by_id` → normalized `outcome_prices` = `[0.0, 1.0]`
+   placeholder for EVERY market (mangled by normalize_market) and `closed`
+   always False even when `status=finalized` → script prints "NO RESOLVED
+   TRADES" on a week with a finalized winner. Correct read:
+   `kalshi.get_json(f"/markets/{ticker}")` → `market["status"]=="finalized"`
+   + `market["result"]` ("yes"/"no"). win = qty×(1−price), loss = −qty×price.
+4. ⚠️ **Exit fills fall outside the window**: an in-window BUY whose SELL
+   lands next day (ZAR 08-09: buy Aug 1 18:18 CT in-window, exit Aug 2 12:36
+   CT out-of-window) is dropped → realized −$0.0441 never counted. Match
+   same-market opposite-side fills across the boundary to get true
+   round-trip P&L; a lone buy treated as "resolved win" overstates margin.
+5. Failure-mode split: mechanical markers = losses on high buy prices
    (>0.30) = price-risk/stale-execution class; otherwise thesis-driven.
-5. If mechanical losses → produce CAVEMAN Karpathy-autoresearch-style report:
+6. If mechanical losses → produce CAVEMAN Karpathy-autoresearch-style report:
    STATE → ANALYZE → HYPOTHESIZE → FIX PROPOSAL (easy to follow, engineering
    tone). **Implementation changes ONLY on VJ approval** — the review
    proposes, VJ disposes. Never auto-patch code/config/orders from a review.
-6. Codify any confirmed fix into RULES.md + config + code, push to repo
+7. Codify any confirmed fix into RULES.md + config + code, push to repo
    (only after VJ says yes).
 
 Karpathy autoresearch style = explicit state/observation → hypothesis →
