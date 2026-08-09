@@ -103,6 +103,29 @@ keep `risk.pre_flight_check` as the gate. Detail: `references/earnings-mention-m
 - Exits fill at/better than price immediately; verify via `/portfolio/positions`
   (qty 0.00 = flat; zero-qty ghost entries can still appear, check `position_fp`).
 
+## TAKE-PROFIT — 91c+ exit (VJ rule 6b, 2026-08-09, Sabalenka lesson, HARD)
+
+**Live sports position whose market YES price reaches ≥0.91 → sell it, lock
+profit. Do NOT ride a 91c+ winner to resolution.** Winner-side only — this is
+NOT a stop-loss; losers still ride to resolution (rule 6).
+
+- Rationale (EV): at ≥91c, sell EV ≈ ride EV minus variance. The 5-8% blowup
+  tail turns +45c locked into −45c. Sabalenka case: 2×@0.46, decider lead at
+  ~92c, rode, lost — $1.84 swing on one decision.
+- Mechanics (all verified live): `reduce_only=True` + IOC (omit expiration_time,
+  kalshi.place_order handles), selling YES = side NO. Exit price = FULL-LADDER
+  bid wall via `kalshi.get_orderbook_full` (density mode, trash floor) — NEVER
+  the stale quote endpoint (Sabalenka 08-09: quote showed prev-day 85c while
+  in-play book was 38c).
+- Scale-out optional: sell half @91c, ride half (matches the "ride to
+  resolution" instinct on the other half).
+- Threshold 91c = one-way; no re-entry below.
+- Tool: `scripts/take_profit.py` (repo + cron copy pattern). Dry-run default;
+  `--place` executes reduce_only IOC sells; `--half` sells half. Run it during
+  live sports windows — it scans open YES positions, computes each bid wall,
+  flags ≥0.91.
+- Only YES longs (qty>0) qualify. NO positions ride per rule 6.
+
 ## Fill verification — trust exchange, not local DB
 
 - `get_orders(status="resting")` can return empty while the order actually
