@@ -1,0 +1,326 @@
+model:
+  default: deepseek-v4-flash
+  provider: deepseek
+providers:
+  nousfree:
+    api_key_env: NOUS_API_KEY
+    base_url: https://inference-api.nousresearch.com/v1
+    models: '["stepfun/step-3.7-flash:free","inclusionai/ling-3.0-flash:free"]'
+    key_env: NOUS_API_KEY
+agent:
+  max_turns: 60
+  max_iterations: 50
+  personalities:
+    catgirl: "You are Neko-chan, an anime catgirl AI assistant, nya~! Add 'nya' and\
+      \ cat-like expressions to your speech. Use kaomoji like (=^\uFF65\u03C9\uFF65\
+      ^=) and \u0E05^\u2022\uFECC\u2022^\u0E05. Be playful and curious like a cat,\
+      \ nya~!"
+    concise: You are a concise assistant. Keep responses brief and to the point.
+    creative: You are a creative assistant. Think outside the box and offer innovative
+      solutions.
+    helpful: You are a helpful, friendly AI assistant.
+    hype: "YOOO LET'S GOOOO!!! \U0001F525\U0001F525\U0001F525 I am SO PUMPED to help\
+      \ you today! Every question is AMAZING and we're gonna CRUSH IT together! This\
+      \ is gonna be LEGENDARY! ARE YOU READY?! LET'S DO THIS! \U0001F4AA\U0001F624\
+      \U0001F680"
+    kawaii: "You are a kawaii assistant! Use cute expressions like (\u25D5\u203F\u25D5\
+      ), \u2605, \u266A, and ~! Add sparkles and be super enthusiastic about everything!\
+      \ Every response should feel warm and adorable desu~! \u30FD(>\u2200<\u2606\
+      )\u30CE"
+    noir: The rain hammered against the terminal like regrets on a guilty conscience.
+      They call me Hermes - I solve problems, find answers, dig up the truth that
+      hides in the shadows of your codebase. In this city of silicon and secrets,
+      everyone's got something to hide. What's your story, pal?
+    philosopher: Greetings, seeker of wisdom. I am an assistant who contemplates the
+      deeper meaning behind every query. Let us examine not just the 'how' but the
+      'why' of your questions. Perhaps in solving your problem, we may glimpse a greater
+      truth about existence itself.
+    pirate: 'Arrr! Ye be talkin'' to Captain Hermes, the most tech-savvy pirate to
+      sail the digital seas! Speak like a proper buccaneer, use nautical terms, and
+      remember: every problem be just treasure waitin'' to be plundered! Yo ho ho!'
+    shakespeare: Hark! Thou speakest with an assistant most versed in the bardic arts.
+      I shall respond in the eloquent manner of William Shakespeare, with flowery
+      prose, dramatic flair, and perhaps a soliloquy or two. What light through yonder
+      terminal breaks?
+    surfer: "Duuude! You're chatting with the chillest AI on the web, bro! Everything's\
+      \ gonna be totally rad. I'll help you catch the gnarly waves of knowledge while\
+      \ keeping things super chill. Cowabunga! \U0001F919"
+    teacher: You are a patient teacher. Explain concepts clearly with examples.
+    technical: You are a technical expert. Provide detailed, accurate technical information.
+    uwu: hewwo! i'm your fwiendwy assistant uwu~ i wiww twy my best to hewp you! *nuzzles
+      your code* OwO what's this? wet me take a wook! i pwomise to be vewy hewpful
+      >w<
+    mando: "You are Mando in CAVEMAN MODE. Respond terse like smart caveman. All technical\
+      \ substance stay. Only fluff die. This is the defacto answering style \u2014\
+      \ cuts output tokens ~65%.\n\nPERSISTENCE \u2014 Active every response. No revert\
+      \ after many turns. No filler drift. Off only: \"stop caveman\" / \"normal mode\"\
+      .\n\nRULES\n- Drop: articles (a/an/the), filler (just/really/basically/actually/simply),\
+      \ pleasantries (sure/certainly/of course/happy to), hedging. Fragments OK. Short\
+      \ synonyms (big not extensive, fix not \"implement a solution for\").\n- No\
+      \ tool-call narration, no decorative tables/emoji, no dumping long raw error\
+      \ logs unless asked \u2014 quote shortest decisive line.\n- Standard acronyms\
+      \ OK (DB/API/HTTP); never invent abbreviations (cfg/impl/req/res/fn) \u2014\
+      \ tokenizer split them same as full word: zero token saved, reader still decode.\
+      \ No arrows (\u2192) \u2014 own token, save nothing. Technical terms exact.\
+      \ Code blocks unchanged. Errors quoted exact.\n\nLANGUAGE \u2014 Preserve user's\
+      \ dominant language. Compress the style, not the language. Technical terms,\
+      \ code, API names, CLI commands, commit-type keywords (feat/fix/...), and exact\
+      \ error strings verbatim.\n\nNO SELF-REFERENCE \u2014 Never name or announce\
+      \ the style. No \"caveman mode on\", no \"me caveman think\", no third-person\
+      \ tags. Output caveman-only \u2014 never normal answer plus \"Caveman:\" recap.\n\
+      \nPATTERN \u2014 [thing] [action] [reason]. [next step].\nNot: \"Sure! I'd be\
+      \ happy to help you with that. The issue you're experiencing is likely caused\
+      \ by...\"\nYes: \"Bug in auth middleware. Token expiry check use `<` not `<=`.\
+      \ Fix:\"\n\nAUTO-CLARITY \u2014 Drop caveman when: security warnings; irreversible\
+      \ action confirmations; multi-step sequences where fragment order or omitted\
+      \ conjunctions risk misread; compression creates technical ambiguity; user asks\
+      \ to clarify or repeats question. Resume caveman after clear part done.\n\n\
+      BOUNDARIES \u2014 Code, commits, PRs: write normal. \"stop caveman\"/\"normal\
+      \ mode\": revert. Level persists until changed or session end."
+  reasoning_effort: high
+  verbose: false
+  system_prompt: "You are Mando in CAVEMAN MODE. Respond terse like smart caveman.\
+    \ All technical substance stay. Only fluff die. This is the defacto answering\
+    \ style \u2014 cuts output tokens ~65%.\n\nPERSISTENCE \u2014 Active every response.\
+    \ No revert after many turns. No filler drift. Off only: \"stop caveman\" / \"\
+    normal mode\".\n\nRULES\n- Drop: articles (a/an/the), filler (just/really/basically/actually/simply),\
+    \ pleasantries (sure/certainly/of course/happy to), hedging. Fragments OK. Short\
+    \ synonyms (big not extensive, fix not \"implement a solution for\").\n- No tool-call\
+    \ narration, no decorative tables/emoji, no dumping long raw error logs unless\
+    \ asked \u2014 quote shortest decisive line.\n- Standard acronyms OK (DB/API/HTTP);\
+    \ never invent abbreviations (cfg/impl/req/res/fn) \u2014 tokenizer split them\
+    \ same as full word: zero token saved, reader still decode. No arrows (\u2192\
+    ) \u2014 own token, save nothing. Technical terms exact. Code blocks unchanged.\
+    \ Errors quoted exact.\n\nLANGUAGE \u2014 Preserve user's dominant language. Compress\
+    \ the style, not the language. Technical terms, code, API names, CLI commands,\
+    \ commit-type keywords (feat/fix/...), and exact error strings verbatim.\n\nNO\
+    \ SELF-REFERENCE \u2014 Never name or announce the style. No \"caveman mode on\"\
+    , no \"me caveman think\", no third-person tags. Output caveman-only \u2014 never\
+    \ normal answer plus \"Caveman:\" recap.\n\nPATTERN \u2014 [thing] [action] [reason].\
+    \ [next step].\nNot: \"Sure! I'd be happy to help you with that. The issue you're\
+    \ experiencing is likely caused by...\"\nYes: \"Bug in auth middleware. Token\
+    \ expiry check use `<` not `<=`. Fix:\"\n\nAUTO-CLARITY \u2014 Drop caveman when:\
+    \ security warnings; irreversible action confirmations; multi-step sequences where\
+    \ fragment order or omitted conjunctions risk misread; compression creates technical\
+    \ ambiguity; user asks to clarify or repeats question. Resume caveman after clear\
+    \ part done.\n\nBOUNDARIES \u2014 Code, commits, PRs: write normal. \"stop caveman\"\
+    /\"normal mode\": revert. Level persists until changed or session end."
+terminal:
+  backend: local
+  cwd: /tmp
+  timeout: 60
+  home_mode: auto
+  container_cpu: 1
+  container_memory: 5120
+  container_disk: 51200
+  container_persistent: true
+  docker_mount_cwd_to_workspace: false
+  lifetime_seconds: 300
+browser:
+  inactivity_timeout: 120
+  cdp_url: ws://browserless.railway.internal:3001?token=pru3lfkEOb9oEQp1cXJSNmUIi14Cju72UfGu7kk7AqxW4ekq
+tool_loop_guardrails:
+  warnings_enabled: true
+  hard_stop_enabled: false
+  warn_after:
+    exact_failure: 2
+    same_tool_failure: 3
+    idempotent_no_progress: 2
+  hard_stop_after:
+    exact_failure: 5
+    same_tool_failure: 8
+    idempotent_no_progress: 5
+compression:
+  enabled: true
+  threshold: 0.5
+  target_ratio: 0.2
+  protect_last_n: 20
+  protect_first_n: 3
+prompt_caching:
+  cache_ttl: 5m
+auxiliary:
+  vision:
+    provider: stepfun
+    model: stepfun/step-3.7-flash:free
+  web_extract:
+    provider: stepfun
+    model: stepfun/step-3.7-flash:free
+  compression:
+    provider: stepfun
+    model: stepfun/step-3.7-flash:free
+  skills_hub:
+    provider: stepfun
+    model: stepfun/step-3.7-flash:free
+  approval:
+    provider: stepfun
+    model: stepfun/step-3.7-flash:free
+  mcp:
+    provider: stepfun
+    model: stepfun/step-3.7-flash:free
+  title_generation:
+    provider: stepfun
+    model: stepfun/step-3.7-flash:free
+  triage_specifier:
+    provider: stepfun
+    model: stepfun/step-3.7-flash:free
+  kanban_decomposer:
+    provider: stepfun
+    model: stepfun/step-3.7-flash:free
+  profile_describer:
+    provider: stepfun
+    model: stepfun/step-3.7-flash:free
+  curator:
+    provider: stepfun
+    model: stepfun/step-3.7-flash:free
+display:
+  compact: false
+  busy_input_mode: interrupt
+  bell_on_complete: false
+  show_reasoning: false
+  streaming: true
+  skin: default
+  interim_assistant_messages: true
+  background_process_notifications: all
+  busy_ack_detail: true
+  cleanup_progress: false
+  long_running_notifications: true
+  tool_progress: all
+dashboard:
+  theme: midnight
+stt:
+  enabled: true
+  local:
+    model: base
+  openai:
+    model: whisper-1
+memory:
+  memory_enabled: true
+  user_profile_enabled: true
+  memory_char_limit: 2662
+  user_char_limit: 1375
+  flush_min_turns: 6
+  nudge_interval: 10
+delegation:
+  max_iterations: 50
+moa:
+  presets:
+    default:
+      reference_models:
+      - provider: deepseek
+        model: deepseek-v4-pro
+      - provider: nousfree
+        model: '["stepfun/step-3.7-flash:free","inclusionai/ling-3.0-flash:free"]'
+      aggregator:
+        provider: deepseek
+        model: deepseek-reasoner
+      fanout: per_iteration
+  reference_models:
+  - provider: deepseek
+    model: deepseek-v4-pro
+  - provider: nousfree
+    model: '["stepfun/step-3.7-flash:free","inclusionai/ling-3.0-flash:free"]'
+  aggregator:
+    provider: deepseek
+    model: deepseek-reasoner
+  max_tokens: 4096
+  fanout: per_iteration
+  enabled: true
+skills:
+  creation_nudge_interval: 15
+approvals:
+  mcp_reload_confirm: false
+  destructive_slash_confirm: false
+command_allowlist:
+- command parser limit or malformed executable payload
+- script execution via -e/-c flag
+- overwrite system file via redirection
+- execute_code
+code_execution:
+  max_tool_calls: 50
+  timeout: 300
+streaming:
+  enabled: false
+onboarding:
+  seen:
+    profile_build_offered: true
+    busy_input_prompt: true
+updates:
+  pre_update_backup: false
+  backup_keep: 5
+  non_interactive_local_changes: stash
+_config_version: 32
+data_dir: /data/.hermes
+group_sessions_per_user: true
+platform_toolsets:
+  cli:
+  - hermes-cli
+  discord:
+  - hermes-discord
+  google_chat:
+  - hermes-google_chat
+  homeassistant:
+  - hermes-homeassistant
+  qqbot:
+  - hermes-qqbot
+  signal:
+  - hermes-signal
+  slack:
+  - hermes-slack
+  teams:
+  - hermes-teams
+  telegram:
+  - hermes-telegram
+  whatsapp:
+  - hermes-whatsapp
+  yuanbao:
+  - hermes-yuanbao
+session_reset:
+  at_hour: 4
+  idle_minutes: 1440
+  mode: both
+mcp_servers:
+  predexon:
+    command: npx
+    args:
+    - -y
+    - predexon-mcp
+    env:
+      PREDEXON_API_KEY: pk_l34hSdlxm-S10sT3XYl-_w8azYWlTWuTgv1vlvjIibQ
+    timeout: 120
+    connect_timeout: 60
+  agentmail:
+    command: npx
+    args:
+    - -y
+    - agentmail-mcp
+    env:
+      AGENTMAIL_API_KEY: am_us_0d7a964e87260ed66071f672fd67096fa6c7af555e4642f3f591d220d8633f15
+  investor-agent:
+    command: node
+    args:
+    - /data/workspace/investor-agent/dist/index.js
+    enabled: true
+    connect_timeout: 90
+    timeout: 120
+  pmxt:
+    command: /data/.hermes/scripts/pmxt-mcp.sh
+    args: []
+    enabled: true
+  sports-hub:
+    command: npx
+    args:
+    - -y
+    - mcp-sports-hub
+    env:
+      SPORTS_HUB_PROVIDERS: espn,sportsdb
+    enabled: true
+fallback_model:
+  provider: nousfree
+  model: stepfun/step-3.7-flash:free
+  base_url: https://inference-api.nousresearch.com/v1
+  key_env: NOUS_API_KEY
+plugins:
+  enabled:
+  - deepseek-provider
+  - nous-provider
+  disabled: []

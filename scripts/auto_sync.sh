@@ -17,6 +17,10 @@ for skill in predict prediction-market-live-ops; do
   fi
 done
 
+# ---- 1b. mirror hermes config (no secrets) + live-score helper ----
+cp /data/.hermes/config.yaml "$REPO/configs/hermes.config.yaml" 2>/dev/null || true
+cp /data/.hermes/scripts/espn_live.py "$REPO/scripts/espn_live.py" 2>/dev/null || true
+
 cd "$REPO" || exit 1
 
 # ---- 2. stage everything (skills + tools + config + docs) ----

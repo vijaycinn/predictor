@@ -46,6 +46,13 @@ SIDE xSIZE @ PRICE ($cost) ev=Xc conf=Y | question` then the legend line. VJ
 replies with the emoji + id (or just approves/rejects). NEVER present a
 proposal without 👍/👎 — the marker IS the decision interface.
 
+**WALL PRICE IN PROPOSAL (VJ 2026-08-09, Sabalenka lesson, HARD):** when VJ
+specifies an individual event (drops a link), the proposal MUST quote the
+full-ladder vol-weighted WALL price in the direction of the proposal — bid
+wall for BUY proposals, ask wall for SELL — as the reference limit. Example:
+SAB buy-wall 0.44 → proposal reads `BUY @ 0.44`, never `@ 0.52` (mid). Wall
+= truth, mid = noise. Compute via `kalshi.get_orderbook_full` (PMXT truncates).
+
 ## Hard rules (VJ, 2026-08-02)
 
 - **NEVER BET IF OUTCOME PROB < 50%** (ALL bets, not just live). Prob must be individually established from INDEPENDENT source: Polymarket cross-venue price (arb) or verifiable research — Kalshi's own book alone is NOT valid. Carry it in `sig.approved_price`/`ev_calc.price_side`; guard `min_win_prob: 0.50` refuses missing/<50% (`override_win_floor` = explicit user confirm only). Sub-50% = lottery = never.
@@ -150,6 +157,27 @@ VJ opened a Polymarket US account (US-regulated). Analysis + trading wired:
 - **Kalshi positions**: field is `position_fp` + `market_exposure_dollars`, NOT quantity_fp. status display shows x0 for filled trades (display bug, exchange is truth).
 - **Maker depth strategy (VJ 2026-08-02)**: prefer_maker rests on best bid level ≥`maker_depth_cents` (2) below ref price with size ≥`maker_min_volume` (100), via full `bid_ladder`/`ask_ladder` in features. **VOLUME-PEAK RULE — FOLLOW THE MONEY, ALWAYS**: price at the size-weighted center of mass of the qualifying cluster, NOT the highest fillable level. Thin top-of-book bids are market-maker bait; the wall of size is the real lean. Drop >2 stddev from peak, pick level closest to volume-weighted mean (ties → cheaper). NO side uses `ask_ladder` (=no_dollars) directly — do NOT invert with 1-p. Float trap: round threshold to 3dp (`0.44-0.02=0.41999` excludes 0.42). Fallback = old 50% nudge. TTL unchanged: min(24h, 0.8×hours_to_expiry). Current trades untouched; applies to future orders only.
 - In-play markets (live tennis etc.) = skip via 2h loop; micro-edge lost.
+  **SCORE SOURCE (VJ 2026-08-09, Sabalenka lesson, HARD):** for live match
+  state, NEVER parse scraped scoreboard digits (sofascore/flashscore text
+  mangles columns — wrong set-1 read twice). Ground truth = Kalshi app
+  screenshot (OCR it) + live market price/win-prob. Kalshi live prob is the
+  fastest reliable signal; quote it, not a guessed scoreline.
+  **KALSHI LIVE READ (2026-08-09):** `/markets/{ticker}` quote fields
+  (yes_bid_dollars etc.) can be STALE (Sabalenka showed updated_time
+  prev-day, 85c pre-match price while in-play book was 38c). Real-time =
+  `get_orderbook_full(ticker)` bid/ask only. Always check `updated_time`;
+  never trust the quote endpoint alone. No raw score exists in the API —
+  score comes from the Kalshi app screenshot (OCR).
+  **DEFAULT SCORE SOURCE (VJ 2026-08-09, HARD):** sports-hub MCP is the
+  default for latest sports scores — `espn_get_scoreboard` (sport/league/date)
+  for live tennis/other scores; `sportsdb_get_events_by_date` for cricket.
+  Kalshi orderbook = live win-prob. Kalshi app screenshot (OCR) = backup only.
+  Compact helper: `python3 /data/.hermes/scripts/espn_live.py --sport tennis
+  --league wta --date YYYYMMDD --player NAME` (walks groupings, prints one
+  line per match — avoids the 2MB raw dump). NOTE: ESPN groupings cache
+  lags 10-20 min in-play; the Kalshi app screenshot is fresher for live
+  tennis. Match data nests under event -> groupings -> matches, NOT
+  top-level competitions.
   **EXCEPTION (VJ 2026-08-03): VJ-flagged market + "want this" = trade intent. Follow his lead, place manually, bypass in-play/band/sub-50 gates. He placed Deckers 41c live when Mando skipped — lesson logged.
 - Kalshi ticker = PMXT slug; Predexon search matches TITLES not tickers.
 - Proposals expire 2h. Approve within a cycle.
