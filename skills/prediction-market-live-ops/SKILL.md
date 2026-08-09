@@ -111,6 +111,28 @@ keep `risk.pre_flight_check` as the gate. Detail: `references/earnings-mention-m
   rationale exists, log it — DB has no exit-reason field, so "why did we sell
   a winner" is unanswerable afterwards.
 
+## Cron jobs — verify existence before trusting docs (hit 2026-08-09)
+
+Reference docs claimed `live-flip-scan` (id 60dc2f20624f) existed; `cronjob
+action=list` showed 9 jobs, none of them it. Docs rot; the scheduler is
+truth. When a recurring watchdog/scan is supposed to run, ALWAYS
+`cronjob action=list` and confirm the job id + schedule BEFORE assuming it
+fires — a missing cron means silent dead features (flip scan hadn't run for
+days while docs said every 30m). Recreate with same name+schedule if gone.
+Also: scripts referenced by crons live in `/data/.hermes/scripts/` — after
+fixing a script, `cp` the repo copy there or the cron runs stale code.
+
+## Exit tool scripts (2026-08-09)
+
+- `scripts/take_profit.py` — dual-mode take-profit: IOC when wall≥91c, else
+  resting limit at threshold; `--half` scale-out; `--ttl-h`.
+- `scripts/exit_plan.py` — V1 poll-based exit manager (positions → missing
+  exits → place, both directions, idempotent); `--place --quiet` = cron mode.
+- `scripts/exit_plan_cron.sh` — cron wrapper (`--place --quiet`).
+- `scripts/exit_watcher.py` — WS fill-channel watcher (V2 push upgrade;
+  `--test` does a tiny buy+sell round trip to verify fill events).
+- `scripts/ws_probe.py` — Kalshi WS auth + subscription probe.
+
 ## TAKE-PROFIT — 91c+ exit (VJ rule 6b, 2026-08-09, Sabalenka lesson, HARD)
 
 **Live sports position whose market YES price reaches ≥0.91 → sell it, lock
