@@ -90,17 +90,20 @@ def main():
     ap.add_argument("--min", type=float, default=0.91, help="take-profit threshold (default 0.91)")
     ap.add_argument("--ttl-h", type=float, default=24.0, help="resting exit TTL hours (default 24)")
     ap.add_argument("--once", action="store_true", help="alias for --place (single pass)")
+    ap.add_argument("--quiet", action="store_true", help="cron mode: silent when all-skip, print only placements/errors")
     args = ap.parse_args()
     place = args.place or args.once
 
     load_env()
     rows = plan(args.min, args.ttl_h)
-    print(f"exit plan — threshold {args.min:.2f}, TTL {args.ttl_h:.0f}h, "
-          f"{'PLACE' if place else 'DRY-RUN'}")
+    if not args.quiet:
+        print(f"exit plan — threshold {args.min:.2f}, TTL {args.ttl_h:.0f}h, "
+              f"{'PLACE' if place else 'DRY-RUN'}")
     placed = []
     for ticker, qty, side, exit_side, limit, exists in rows:
         if exists:
-            print(f"  {side:5} {qty:>8.2f} {ticker} — exit already resting, skip")
+            if not args.quiet:
+                print(f"  {side:5} {qty:>8.2f} {ticker} — exit already resting, skip")
             continue
         if exit_side == "SELL_YES":
             desc = f"SELL YES @ {limit:.2f} (locks profit if YES reaches {limit:.2f})"
@@ -120,9 +123,14 @@ def main():
         else:
             print(f"  WOULD {side:5} {qty:>8.2f} {ticker} — {desc}")
 
-    print(f"\n{len(placed)} orders placed, {len(rows)} positions checked.")
-    if not place:
-        print("Dry-run only. Re-run with --place to execute.")
+    if args.quiet:
+        # watchdog: emit ONLY when something happened (placed orders or errors)
+        if placed:
+            print(f"exit-plan: {len(placed)} orders placed, {len(rows)} positions checked")
+    else:
+        print(f"\n{len(placed)} orders placed, {len(rows)} positions checked.")
+        if not place:
+            print("Dry-run only. Re-run with --place to execute.")
 
 
 if __name__ == "__main__":
