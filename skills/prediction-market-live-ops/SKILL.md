@@ -120,10 +120,19 @@ NOT a stop-loss; losers still ride to resolution (rule 6).
 - Scale-out optional: sell half @91c, ride half (matches the "ride to
   resolution" instinct on the other half).
 - Threshold 91c = one-way; no re-entry below.
+- **DUAL-MODE EXECUTION (VJ Q&A 2026-08-09):** Kalshi has NO native
+  trigger/OCO orders — a resting limit IS the conditional order. Two cases:
+  - Wall ALREADY ≥ threshold → reduce_only IOC at the wall (condition met,
+    instant lock). IOC only fills if price ≥ limit at placement moment — NEVER
+    fire IOC below threshold (instant cancel).
+  - Wall BELOW threshold → RESTING limit sell AT the threshold (0.91, GTC/GTD
+    with TTL). Fills only when market touches it. This is the "place 2x@0.91
+    after fill and exit if limit hits" pattern VJ asked for — the limit order
+    IS the conditional. No reduce_only (reduce_only requires IOC).
 - Tool: `scripts/take_profit.py` (repo + cron copy pattern). Dry-run default;
-  `--place` executes reduce_only IOC sells; `--half` sells half. Run it during
-  live sports windows — it scans open YES positions, computes each bid wall,
-  flags ≥0.91.
+  `--place` executes dual-mode: IOC when wall≥min, resting limit otherwise;
+  `--half` sells half; `--ttl-h` sets resting TTL. Run it during live sports
+  windows — it scans open YES positions, computes each bid wall, flags ≥0.91.
 - Only YES longs (qty>0) qualify. NO positions ride per rule 6.
 
 ## Fill verification — trust exchange, not local DB
