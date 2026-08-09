@@ -21,7 +21,7 @@ Current config: `mode: live`, `venue: kalshi`, `max_trade_usd: 1.0`,
 1. **Shortlist**: `python3 cli.py --db data/kalshi.db scan --venue kalshi --shortlist /tmp/shortlist.json`
    Filter for VJ-relatable categories: T20/cricket, crypto (BTC/ETH price targets), economic (Fed/CPI/jobs), politics.
 2. **Research**: web_search each candidate. Look for ≥5c divergence from market mid:
-   - T20/cricket: team form, key player availability, pitch/toss, head-to-head
+   - T20/cricket: ESPN Cricinfo = definitive source (VJ 2026-08-08) — team form, key player availability, pitch/toss, head-to-head, odds
    - Crypto: BTC/ETH price action, funding, liquidation levels vs market target
    - Economic: consensus forecasts vs market-implied prob (data release dates)
    - Sports props: player rate stats vs market price (B-R over ESPN)
