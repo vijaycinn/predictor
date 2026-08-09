@@ -28,7 +28,11 @@ class KalshiError(Exception):
     pass
 
 
-class KalshiAuthError(Exception):
+class _NotFound(Exception):
+    """Internal marker for 404 (permanent, no retry)."""
+
+
+class KalshiAuthError(KalshiError):
     pass
 
 
@@ -109,8 +113,14 @@ def get_json(path: str, params: dict | None = None, auth: bool = False, retries:
                 # Kalshi edge intermittently rejects valid signatures in bursts;
                 # retry with backoff before declaring auth failure.
                 raise requests.RequestException(f"HTTP {r.status_code}")
+            if r.status_code == 404:
+                # permanent — bad ticker/path. HTTPError subclasses
+                # RequestException so must raise OUTSIDE the retry except.
+                raise _NotFound(path)
             r.raise_for_status()
             return r.json()
+        except _NotFound as e:
+            raise KalshiError(f"Kalshi {path} not found (404)") from e
         except requests.RequestException as e:
             last_err = e
             time.sleep(1.5 * (2 ** attempt))
