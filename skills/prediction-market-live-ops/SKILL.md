@@ -141,6 +141,13 @@ NOT a stop-loss; losers still ride to resolution (rule 6).
   → `subscribed` ack, `orderbook_snapshot`, `orderbook_delta` (seq-ordered),
   `fill` events. Order confirmation for take-profit exits comes from the WS
   `fill` message, not REST polling.
+  **FILL EVENT FIELD NAMES (verified live 2026-08-09, KXGOLDMON T4811.99 buy+
+  sell round trip):** `msg.market_ticker` (NOT `ticker`), `msg.yes_price_dollars`
+  (STRING, NOT `yes_price`), `msg.count_fp` (STRING), `msg.action` (buy/sell),
+  `msg.post_position_fp` (STRING — pos after fill; "0.00" = flat = exit
+  confirmed), `msg.fee_cost` (STRING), `msg.is_taker`, `msg.ts_ms`,
+  `msg.outcome_side`/`book_side`. Parser in `scripts/exit_watcher.py` uses
+  these; naive field names return null.
 - Tool: `scripts/take_profit.py` (repo + cron copy pattern). Dry-run default;
   `--place` executes dual-mode: IOC when wall≥min, resting limit otherwise;
   `--half` sells half; `--ttl-h` sets resting TTL. Run it during live sports
@@ -418,6 +425,11 @@ API quirks (verified 2026-08-02):
   regardless of category value; category filter must be client-side.
 - `GET /markets?series_ticker=` works; series names are `KXDOGE`, `KXETH`,
   `KXCPIYOY`, `KXMLB`, NOT guessed names like `KXBTCDEFAULT` (returns 0).
+- **404 vs retry (fixed 2026-08-09):** `get_json` backoff-retried EVERY
+  RequestException incl 404 — a bad ticker stalled 46s (1.5s×2^n). `HTTPError`
+  subclasses `RequestException` so a bare `raise_for_status()` still retried.
+  Fix: raise a custom `_NotFound` exception OUTSIDE the retry except — 404 now
+  fails in 0.2s. When probing unknown tickers, expect fast 404, not hangs.
 
 Re-runnable: `scripts/category_scan.py` (auth from env, args = category names).
 Run it instead of hand-typing the auth boilerplate + pagination loop.
