@@ -9,7 +9,7 @@ SKILLS_SRC="/data/.hermes/skills/research"
 SKILLS_DST="$REPO/skills"
 
 # ---- 1. mirror trading skills ----
-for skill in predict prediction-market-live-ops; do
+for skill in predict prediction-market-live-ops run-exit-plan; do
   if [ -d "$SKILLS_SRC/$skill" ]; then
     rm -rf "$SKILLS_DST/$skill"
     cp -r "$SKILLS_SRC/$skill" "$SKILLS_DST/$skill"
