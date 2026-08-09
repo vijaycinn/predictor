@@ -122,6 +122,21 @@ def run_scan(conn, cfg: dict, llm_overrides: dict | None = None, verbose: bool =
     if verbose:
         print(f"[scan] venue={cfg.get('venue', 'polymarket')} discovered {len(markets)} candidate markets")
 
+    # VIX REGIME GATE (VJ cheat code, rule 20, 2026-08-09): fear gauge filter.
+    # BUY zone (VIX>30): panic -> keep cheap recovery/risk-on candidates.
+    # TRIM zone (VIX<15): complacency -> suppress new aggressive longs.
+    # NEUTRAL: normal. Never a standalone signal — filter only.
+    vix_regime = {"vix": None, "zone": "NEUTRAL"}
+    try:
+        from scripts.vix_regime import get_vix, regime as vix_regime_of
+        _vix = get_vix()
+        if _vix is not None:
+            vix_regime = {"vix": _vix, "zone": vix_regime_of(_vix)}
+    except Exception as e:
+        if verbose:
+            print(f"[scan] vix gate unavailable: {str(e)[:60]}")
+    trim_zone = vix_regime["zone"] == "TRIM"
+
     exec_mod_inst = executor_mod.make_executor(conn, cfg)
     signals = []
     top = []
@@ -272,9 +287,22 @@ def run_scan(conn, cfg: dict, llm_overrides: dict | None = None, verbose: bool =
     shortlist = [e for e in shortlist if (e.get("mid") or 0) >= min_win]
     top = [t for t in top if t.get("market_price", t.get("prob_yes", 0)) >= min_win]
 
+    # VIX REGIME GATE on shortlist (rule 20, 2026-08-09): in TRIM zone (VIX<15,
+    # complacency) suppress NEW long entries — trim winners, don't chase
+    # euphoria. Proposals already PENDING_APPROVAL stay (user decision); only
+    # new signals/auto shortlist items are cut. BUY zone (VIX>30) keeps all.
+    vix_filtered = 0
+    if trim_zone:
+        _before = len(shortlist)
+        shortlist = [e for e in shortlist if e.get("side") != "YES"]
+        vix_filtered = _before - len(shortlist)
+        if vix_filtered:
+            skipped.append({"reason": f"vix_trim_zone ({vix_regime['vix']:.1f})", "count": vix_filtered})
+
     return {
         "ts": time.time(),
         "venue": cfg.get("venue", "polymarket"),
+        "vix_regime": vix_regime,
         "markets_evaluated": len(markets),
         "signals_generated": len(signals),
         "proposals": len([t for t in top if t["status"] == "PENDING_APPROVAL"]),
@@ -286,6 +314,7 @@ def run_scan(conn, cfg: dict, llm_overrides: dict | None = None, verbose: bool =
         "top": top,
         "shortlist": shortlist,
         "skipped": skipped[:50],
+        "vix_filtered": vix_filtered,
     }
 
 
