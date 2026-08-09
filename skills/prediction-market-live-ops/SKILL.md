@@ -160,6 +160,14 @@ NOT a stop-loss; losers still ride to resolution (rule 6).
   `--place` executes dual-mode: IOC when wall≥min, resting limit otherwise;
   `--half` sells half; `--ttl-h` sets resting TTL. Run it during live sports
   windows — it scans open YES positions, computes each bid wall, flags ≥0.91.
+- **AUTO-MAINTENANCE CRON (2026-08-09):** job `exit-plan-maintain`
+  (`ac616c49eac6`), `no_agent=true`, every 12h, deliver origin. Runs
+  `exit_plan_cron.sh` → `exit_plan.py --place --quiet` (repo script; wrapper in
+  `/data/.hermes/scripts/`). `--quiet` = watchdog: SILENT when all exits
+  resting, prints only placements/errors. Re-places expired (24h TTL) exits +
+  covers new positions within 12h. Manual `run-exit-plan` skill still
+  approval-gated; cron is the standing automation — idempotent so they never
+  fight.
 - Only YES longs (qty>0) qualify. NO positions ride per rule 6.
 
 ## Fill verification — trust exchange, not local DB
@@ -1015,6 +1023,32 @@ with synthetic ladders, live smoke):
 `references/polymarket-us-api.md`. Quick auth sanity check (reads keys from
 /data/.hermes/.env, never prints them):
 `python3 <skill_dir>/scripts/pmus_auth_probe.py`.
+
+## ITF event sourcing (2026-08-09, Huang/Cakarevic lesson)
+
+- **ESPN misses ITF events entirely** — `espn_live --league wta` returns "no
+  match found"; sports-hub scoreboard dump has no ITF rows. Do NOT burn time
+  on ESPN for ITF.
+- **Sofascore WORKS for ITF live scores** via web_extract on the match URL
+  (point-by-point + set scores parseable). NOTE: the live-tennis-scores
+  reference says "Sofascore 403" — that was a raw-curl block; web_extract with
+  browser-grade fetch succeeds. Try web_extract before declaring Sofascore dead.
+- **ITF official match page CACHES STALE** (itftennis.com/en/match?matchId=...):
+  returned identical "2h 8m / In Progress" content on two fetches while the
+  match was ~3h in. Cross-check elapsed time vs match start before trusting.
+- **No PM.com listing for ITF singles** (gamma events scan empty) → no
+  cross-venue truth → research-only, default SKIP unless edge is solid.
+- **Robinhood prediction markets are KalshiEX-backed** — same underlying as
+  Kalshi, NOT an independent source for rule-7 win floor. Robinhood page price
+  (e.g. 37¢) IS the Kalshi book, just rendered. Sportsbook odds (FanDuel
+  +100/-133) = sportsbook, not a prediction market — also not rule-7
+  independent. Kalshi book alone stays invalid for ≥50% floor.
+- **Market ticker ≠ event ticker**: URL path event `KXITFWMATCH-...HUACAK`
+  404s as a market; real markets are `-HUA` / `-CAK` suffixes. Resolve via
+  `/markets?event_ticker=<ev>` (never `/events/{ev}/markets` = 404).
+- **Kalshi quote endpoint can lag the orderbook in-play** (Huang 08-09: quote
+  0.41/0.44 vs live ladder top bid 0.35×9482, Robinhood 37¢). Read the
+  full-ladder book for live win-prob, per Sabalenka lesson.
 
 ## References
 

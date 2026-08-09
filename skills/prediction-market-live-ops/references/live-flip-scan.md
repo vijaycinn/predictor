@@ -70,11 +70,32 @@ Pegula/Eala DC final (0.39/0.61, $440k).
 
 ## Pitfalls
 
+- **HARDCODED DATE = SILENT DEAD SCANNER (hit 2026-08-09).** Script had
+  `"26AUG02" in e.upper()` — hardcoded to Aug 2. Ran every 30m for a WEEK
+  printing "No flip-zone live markets right now" while 100+ live markets
+  existed. No error, no alert — the watchdog was silently scanning last week.
+  Fix: compute today from the clock —
+  `today_str = datetime.now(CT).strftime("%y%b%d").upper()` → `26AUG09`.
+  **Kalshi ticker date format is `%y%b%d` (26AUG09), NOT ISO `20260809`** —
+  same trap hit a manual scan (`today="20260809"` matched 0 markets).
+  Any date-filter on Kalshi tickers must use the %y%b%d form.
+- **Verify scan sees TODAY before trusting "no markets".** After fixing,
+  confirm count > 0 — "no flip-zone markets" is a bug symptom, not a
+  market state. Manual scan pattern: pull each series prefix with
+  `series_ticker=` (event ticker ≠ market ticker — the Kalshi share-URL path
+  segment is the EVENT ticker; market tickers carry a side suffix like
+  `-HUA`/`-CAK`), filter by today_str, sort by |mid−0.50|.
 - Kalshi MVE parlay markets (KXMVESPORTSMULTIGAMEEXTENDED...) embed player
   names in ticker and pollute naive name searches — exclude MVE via
   `mve_filter=exclude` or prefix whitelist.
 - Set-winner markets repricing: mid 0.05-0.95 = in play; 0.90+ = set nearly
   decided. Don't suggest near-terminal sets as flips.
+- **Pre-match markets masquerade as flips.** Scan flags price state only —
+  Eala/Bencic R16 and Fonseca/Shelton R16 appeared at 0.47-0.54 while the
+  players had just finished EARLIER matches (Eala bt Parks, Shelton bt
+  Brooksby). The Kalshi match market for the NEXT round opens pre-match at
+  flip-zone prices. Always score-check before presenting (same rule as the
+  RESOLVED trap below) — a pre-match row is not a live flip.
 
 ### RESOLVED matches can still appear in the flip scan (hit live 2026-08-03)
 
