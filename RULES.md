@@ -199,6 +199,21 @@ the process is luck, not skill — both get analyzed.
     take-profit / reduce exposure.
     Tool: `scripts/vix_regime.py` (Yahoo ^VIX, live-verified 2026-08-09:
     VIX 14.9 = TRIM zone). Run at hunt start; quote regime in proposals.
+21. **NEVER REPRICE A VJ ORDER WITHOUT CONFIRMATION (VJ 2026-08-09, HARD,
+    Silva + SPX lessons).** When VJ specifies a price zone for an order
+    ("@ 0.25", "@ bid wall", "under 0.45"), place AT THAT ZONE. If the book
+    moved so the approved price is no longer the wall / no longer fillable:
+    - **Pre-event / non-live markets: STOP. Do NOT auto-adjust to the new
+      wall.** Report the move, ask VJ for a new price. Never silently rest at
+      a different price zone. (SPX 08-09: approved 0.25, wall moved to 0.44,
+      auto-placed at 0.44 — WRONG. VJ canceled.)
+    - **Live in-play events ONLY: place at the fresh instruction-time wall**
+      (rule 5b — book moves fast, micro-edge lost on delay), but ALWAYS flag
+      the delta in the confirmation ("placed @ X, approved @ Y, wall moved").
+      (Silva 08-09: approved 0.40 wall, crashed to 0.19 in-play — placed 0.19
+      and flagged; VJ still had to cancel.)
+    - Rule of thumb: price zone change = new decision = new confirmation,
+      except live-event fills where delay costs more than repricing.
 
 ## Retrospective — 2026-08-02 losses (drives rules above)
 
