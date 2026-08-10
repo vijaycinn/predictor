@@ -60,15 +60,32 @@ def open_positions():
     return out
 
 
-def resting_exit_exists(ticker):
-    """True if we already have a resting order on this ticker (any side) —
-    assumes our only resting orders on open positions are exits from prior runs."""
+def resting_exit_exists(ticker, position_side):
+    """True if we already have a resting EXIT-direction order on this ticker.
+
+    position_side: 'LONG' (qty>0, bought YES) or 'SHORT' (qty<0, bought NO).
+    LONG exit = resting SELL YES (side no/ask) → locks profit at 0.91.
+    SHORT exit = resting BUY YES (side yes/bid at ~0.09) → locks NO at 0.91.
+    An ENTRY-direction resting order does NOT count as an exit:
+    - side yes (buy) on a LONG = leftover entry bid, NOT an exit (KXCPINDEX
+      08-10: buy-YES@0.12 masked a missing 0.91 exit).
+    - side no (sell) on a SHORT = leftover entry ask, NOT an exit."""
     try:
         orders = kalshi.get_orders(status="resting")
-        return any(o.get("ticker") == ticker for o in orders)
     except Exception as e:
         print(f"  resting check ERR {ticker}: {str(e)[:80]}")
         return True  # fail closed: don't duplicate on uncertainty
+    for o in orders:
+        if o.get("ticker") != ticker:
+            continue
+        side = (o.get("side") or "").lower()
+        if position_side == "LONG":
+            if side == "no":
+                return True  # resting sell = exit for long
+        else:
+            if side == "yes":
+                return True  # resting buy = exit for short
+    return False
 
 
 def plan(threshold, ttl_h):
@@ -76,7 +93,8 @@ def plan(threshold, ttl_h):
     rows = []
     for p in open_positions():
         ticker, qty = p["ticker"], p["qty"]
-        exists = resting_exit_exists(ticker)
+        pos_side = "LONG" if qty > 0 else "SHORT"
+        exists = resting_exit_exists(ticker, pos_side)
         if qty > 0:  # LONG: sell YES at threshold
             rows.append((ticker, qty, "LONG", "SELL_YES", threshold, exists))
         else:        # SHORT: buy YES at 1-threshold to close
