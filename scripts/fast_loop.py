@@ -18,7 +18,11 @@ if _PROJECT.exists():
 else:
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from predictor import db, executor as executor_mod, learn, pmxt  # noqa: E402
+from predictor import db, executor as executor_mod, learn  # noqa: E402
+try:
+    from predictor import pmxt  # noqa: E402
+except Exception as _pmxt_imp_err:
+    pmxt = None  # arb feed degrades to predexon instead of killing the job
 from predictor.config import load_config  # noqa: E402
 
 CFG = load_config(str(_PROJECT / "config.yaml")) if _PROJECT.exists() else load_config()
