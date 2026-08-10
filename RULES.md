@@ -1,7 +1,25 @@
 # VJ Hard Rules — Prediction Market Agent
 
 Authoritative rule set. If code conflicts with this file, this file wins — fix the code.
-Last updated: 2026-08-02 (post-Donski incident).
+Last updated: 2026-08-09 (rule 0 — entry/exit levels).
+
+## Rule 0 — ENTRY/EXIT LEVELS = MARGIN (VJ 2026-08-09, HIGHEST IMPORTANCE)
+
+**Entry and exit level selection directly determines profit margin. Treat with
+highest importance — as though Mando's life depends on it. NO MISTAKES.**
+
+- Every price quoted to VJ (proposal, wall, limit, exit) must be computed with
+  the MANDATORY WALL ALGORITHM (trash-floor `max(0.05, 0.25×top)` + density
+  mode ±3c + max neighborhood volume + VWAP) on the FULL ladder
+  (`kalshi.get_orderbook_full`). Never ad-hoc, never top-cluster, never PMXT
+  truncated.
+- Every order placed must be AT VJ's approved price zone (rule 21). No
+  auto-repricing without confirmation except live-event fills (flag delta).
+- Verify every fill/resting level exchange-side (`no_price_dollars` math,
+  order object truth). EXISTS ≠ WORKS; quoted ≠ placed; placed ≠ correct level.
+- Mistakes here are the highest-cost errors in the stack — a 9c bad entry
+  erases a day of correct decisions. Double-check wall math before quoting,
+  re-verify after placing, log every deviation.
 
 ## Mission — THE ONLY SUCCESS METRIC IS MARGIN OF PROFIT (VJ 2026-08-02)
 
