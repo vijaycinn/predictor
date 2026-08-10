@@ -142,6 +142,26 @@ fixing a script, `cp` the repo copy there or the cron runs stale code.
   `--test` does a tiny buy+sell round trip to verify fill events).
 - `scripts/ws_probe.py` — Kalshi WS auth + subscription probe.
 
+**EXIT IDEMPOTENCY — direction-aware + race-safe (VJ 2026-08-10, CPI lesson,
+HARD).** Two live bugs fixed — keep them fixed:
+
+1. **ENTRY ORDERS MASK MISSING EXITS.** "Any resting order on ticker = exit
+   exists" is WRONG. A leftover BUY YES @0.12 entry on KXCPINDEX masked a
+   MISSING 0.91 exit (position sat unprotected through CPI week). The exit
+   check must be direction-aware: LONG (qty>0) → resting SELL side (side=no)
+   counts as exit; SHORT (qty<0) → resting BUY side (side=yes) counts.
+   Entry-direction orders do NOT count. After any exit run, verify every
+   open position shows a matching exit-direction resting order.
+2. **MANUAL + CRON RACE → DUPLICATE EXITS.** Running `exit_plan.py --place`
+   while cron `exit-plan-maintain` fires the same hour = TWO exit orders per
+   position (8 dupes found 08-10; double-sell = short-flip risk if both
+   fill). Before a manual `--place`, list resting orders exchange-side
+   first. After placement, group by (ticker, side, yes_px) and cancel the
+   OLDER expiry batch if dupes appeared. Idempotency claim holds ONLY when
+   the check reads the LIVE book at place time.
+3. Leftover entry orders accumulate and confuse naive resting checks — sweep
+   stale entries periodically.
+
 ## TAKE-PROFIT — 91c+ exit (VJ rule 6b, 2026-08-09, Sabalenka lesson, HARD)
 
 **Live sports position whose market YES price reaches ≥0.91 → sell it, lock
@@ -970,6 +990,23 @@ outages. Convert data-collection/news-feed/watchdog jobs to no_agent=true;
 reserve agent-driven for jobs that genuinely need reasoning. When debugging a
 failed cron, check the job's `no_agent` flag: a script that runs fine manually
 can still fail as an agent job (LLM step, not script).
+
+**OPTIONAL-DEP IMPORTS MUST BE LAZY IN CRON SCRIPTS (2026-08-10, pmxt lesson).**
+A top-level `import pmxt` in `fast_loop.py` killed the entire no_agent cron
+when the `pmxt` pip package vanished from the env — `ModuleNotFoundError` at
+line 21, before the arb try/except could fall back to Predexon. Pattern:
+wrap optional imports so a missing package degrades instead of aborting:
+```python
+try:
+    from predictor import pmxt
+except Exception:
+    pmxt = None  # arb feed falls back to predexon (already in code)
+```
+Then guard usage with the existing try/except (`pmxt.ranked_opportunities`
+fails → `predexon` path). Applies to ANY cron script that imports a
+third-party SDK for a non-core path: the watchdog must survive the dep
+disappearing. Reinstall recipe when it does vanish: `pip install "pmxt[hosted]"`
+(2.54.0, PyPI).
 
 Any script copied to `~/.hermes/scripts/` for cron use BREAKS `sys.path`
 assumptions built for the repo location. Hit live 2026-08-02:
