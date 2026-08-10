@@ -52,11 +52,17 @@ Consequence for score-state edge:
 |--------|--------|-------|
 | tennisstats.com `/h2h/<player-a>-vs-<player-b>-<id>` | ✅ works | Live set scores + game scores + match odds; find via web_search "players H2H" |
 | Robinhood prediction-market event page | ✅ works | `robinhood.com/us/en/prediction-markets/tennis/events/<slug>/` shows live score + live prices + vol |
-| ESPN scoreboard API `site.api.espn.com/apis/site/v2/sports/tennis/atp/scoreboard` | ⚠️ main tour only | Returns **0 events** for Challenger qualifying — do not rely on it for qualifiers |
-| Sofascore API | ❌ 403 | `api.sofascore.com` and `www.sofascore.com` both 403 without auth |
+| **tennislive.net** `/wta/match/<a>-vs-<b>/<event-slug>/` | ✅ works (ITF) | **ONLY verified ITF live-score source** — ESPN API returns 0 events for ITF (challengers + ITF women). Verified 2026-08-09 on W75 Kursumlijska Banja (Huang/Cakarevic) + W50 Hamburg (Silva/Fontenel): set-by-set game scores + "LIVE" flag + player rank/form. |
+| ESPN scoreboard API `site.api.espn.com/apis/site/v2/sports/tennis/atp/scoreboard` | ⚠️ main tour only | Returns **0 events** for Challenger qualifying AND ITF — do not rely on it for qualifiers or ITF. `espn_live.py` prints "no match found" for ITF. |
+| Sofascore API | ⚠️ page works via web_extract, API 403 | `api.sofascore.com` 403; www.sofascore.com match page sometimes renders via web_extract (Cloudflare sometimes blocks) — has live point-by-point + set scores. |
 
 Workflow: web_search "`<playerA>` vs `<playerB>` live score" → tennisstats H2H
-page or Robinhood event page carries the current set/game state.
+page or Robinhood event page carries the current set/game state. For ITF
+(KXITFMMATCH/KXITFWMATCH/KXITFMATCH): web_search "`<playerA>` vs `<playerB>`
+ITF" → tennislive.net page is the reliable live read. NOTE: tennislive.net
+pages CACHE — match "2h 8m" score stuck while Kalshi orderbook moved (08-09);
+cross-check price movement against the book, treat the page as near-live not
+exact.
 
 ## Score-state → win prob heuristic (Bo3, all else equal)
 
