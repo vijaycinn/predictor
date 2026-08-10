@@ -8,6 +8,13 @@ tags: [prediction-markets, trading, kalshi, polymarket, ev, arb]
 
 # predict — manual trade hunt
 
+**RULE 0 (VJ 2026-08-09, HIGHEST IMPORTANCE): ENTRY/EXIT LEVELS = MARGIN.**
+Every level quoted to VJ = MANDATORY WALL ALGORITHM on full ladder
+(trash-floor max(0.05, 0.25×top) + density ±3c + max neighborhood vol + VWAP,
+`kalshi.get_orderbook_full` only — never ad-hoc, top-cluster, or PMXT
+truncated). Orders at VJ-approved zone (rule 21); re-verify exchange-side.
+NO MISTAKES — level errors are the highest-cost errors in the stack.
+
 Invoke for: "hunt for a trade", "what should I trade", "best Kalshi trade",
 "arb check", "check crypto/econ markets".
 

@@ -8,6 +8,15 @@ tags: [prediction-markets, kalshi, live-trading, orders, api]
 
 # Prediction Market Live Order Operations
 
+**RULE 0 (VJ 2026-08-09, HIGHEST IMPORTANCE): ENTRY/EXIT LEVELS = MARGIN.**
+Level selection directly determines profit margin. Treat as life-dependent.
+NO MISTAKES. Every quoted price = MANDATORY WALL ALGORITHM on full ladder
+(trash-floor max(0.05, 0.25×top) + density ±3c + max neighborhood vol + VWAP
+via `kalshi.get_orderbook_full`). Never ad-hoc/top-cluster/truncated. Orders
+at VJ-approved zone (rule 21); verify exchange-side after placement. A 9c bad
+entry erases a day of correct decisions. Double-check before quoting,
+re-verify after placing.
+
 Live execution mechanics for binary prediction markets. Emerged from the first
 real Kalshi order (2026-08-01) which hit THREE production blockers — all now
 documented. Analysis/hunting side lives in skill `predict`; this skill is the
