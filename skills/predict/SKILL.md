@@ -53,6 +53,10 @@ wall for BUY proposals, ask wall for SELL — as the reference limit. Example:
 SAB buy-wall 0.44 → proposal reads `BUY @ 0.44`, never `@ 0.52` (mid). Wall
 = truth, mid = noise. Compute via `kalshi.get_orderbook_full` (PMXT truncates).
 
+**NEVER REPRICE VJ'S ORDER ZONE (rule 21, VJ 2026-08-09, HARD):** VJ approved
+`@ 0.25` → place at 0.25, NOT the moved wall. Pre-event: STOP + ask. Live
+in-play only: fresh wall + flag delta. See live-ops skill.
+
 ## Hard rules (VJ, 2026-08-02)
 
 - **NEVER BET IF OUTCOME PROB < 50%** (ALL bets, not just live). Prob must be individually established from INDEPENDENT source: Polymarket cross-venue price (arb) or verifiable research — Kalshi's own book alone is NOT valid. Carry it in `sig.approved_price`/`ev_calc.price_side`; guard `min_win_prob: 0.50` refuses missing/<50% (`override_win_floor` = explicit user confirm only). Sub-50% = lottery = never.

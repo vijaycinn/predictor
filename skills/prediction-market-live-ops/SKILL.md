@@ -487,6 +487,48 @@ Usage:
 `python3 scripts/search_market.py cazacu --min-vol 1000`
 Never hand-roll the search loop — the script is the fixed, verified path.
 
+## Placement race — analysis wall ≠ placement wall (2026-08-09, Silva lesson)
+
+Hit live on KXITFWMATCH SILFON: analysis quoted bid wall 0.40 (Silva up a
+break in decider), match flipped before placement, fresh wall was **0.19**.
+Order went in at 0.19 per rule 5b (instruction-time book) — but the trade VJ
+approved (buy a leading player at 0.40) no longer existed. Pattern:
+
+- **ALWAYS recompute the wall at placement moment** — never reuse the number
+  quoted in analysis. In-play books move game-to-game (Silva 0.40 → 0.19 in
+  minutes; Sabalenka earlier: 0.44 → 0.63).
+- **If wall moved >~5c from what you quoted: STOP, report the state change,
+  get re-confirmation.** Do NOT silently place at the new level (thesis may
+  be dead — Silva lost her break) and do NOT place at the old level (won't
+  fill / overpay). Same class as rule 8's >10c-move → re-scan.
+- Verifying wall at placement is cheap (one `get_orderbook_full` call) — do
+  it inside the placement script, print the computed wall, and assert limits
+  like `assert limit < 0.50` when VJ says "below 0.5".
+
+## Data-source quirks (2026-08-09)
+
+- **PM.com gamma `/events?slug=X` returns a LIST** — index `[0]` before
+  `.get()`; `evs.get('title')` raises `'list' object has no attribute 'get'`.
+- **Kalshi `/events/{ticker}` returns NO start time** (open/close null,
+  placeholder close weeks out) — for rule 5a timed-event TTL on sports,
+  resolve match start via web search (Yahoo/tennistemple/ESPN, e.g. "Jodar
+  Fils Aug 10 2026" → 19:00Z). Don't burn time on the events endpoint.
+- **Scan date filters must use Kalshi ticker format `%y%b%d` uppercase**
+  (`26AUG09`), NOT ISO `20260809` — mismatched format returns 0 markets
+  silently (hit twice this session).
+
+## NEVER REPRICE A VJ ORDER WITHOUT CONFIRMATION (rule 21, VJ 2026-08-09, HARD)
+
+VJ specifies a price zone → place AT THAT ZONE. Book moved so approved price
+no longer the wall / fillable:
+
+- **Pre-event / non-live: STOP. No auto-adjust.** Report the move, ask for a
+  new price. Never rest at a different zone. (SPX: approved 0.25 → wall 0.44,
+  auto-placed 0.44 — WRONG, VJ canceled.)
+- **Live in-play ONLY: fresh instruction-time wall** (rule 5b), ALWAYS flag
+  delta in confirmation. (Silva: approved 0.40 → crashed 0.19 in-play.)
+- Price zone change = new decision = new confirmation, except live fills.
+
 ## Live-option flip scan (manual only, VJ 2026-08-09)
 
 **MANUAL INVOCATION ONLY (VJ 2026-08-09): cron REMOVED** — VJ wants to run it
