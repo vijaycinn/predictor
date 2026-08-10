@@ -229,3 +229,18 @@ KALSHI IMPLICATION:
 - Hormuz-closed regime → oil/gold elevated. Our gold NO positions (T4251.99 NO @0.46, T4291.99 NO @0.52 = gold BELOW strikes by Aug 31) ride AGAINST this — underwater while gold stays bid. Flag, don't hide.
 - No 7pm geo window trade here — feed log only (rule 18).
 - Next catalyst: Iran-Oman agreement OR actual reopening → risk-ON, oil ▼ gold ▼; that's the signal to re-check the NOs.
+
+## 2026-08-10 — Top Overnight News (VJ forward)
+
+READ:
+- Iran: Trump "semi-negotiating", economic pressure > military strikes. Iran ties Hormuz reopening to concessions (blockade lift, sanctions relief). Oil $84, Hormuz deal elusive → risk-OFF holds.
+- Fed: rate-HIKE bets EASED. Bessent signaling to keep yields from spiking (bond-market angst) → dovish-lean, yield cap.
+- BOJ Sept hike signal → coordinated yen intervention (USD weak = metals bid).
+- AI: Intel $15B stock, Meta open-weight model, China $28T push — risk-on tech backdrop.
+- Eurozone growth quickening despite Iran war. SNB no hike until June 2027.
+- Net: MIXED. Metals bid (Hormuz + weak USD) vs stocks near records (risk-on). Oil $84 = elevated.
+
+KALSHI IMPLICATION:
+- Gold/silver NO positions ride against metals bid while Hormuz closed — same flag as weekend recap. Watch for Iran-Oman deal / reopening → risk-ON, metals ▼.
+- Fed hike bets eased → KXFEDDECISION H25/H0 implications: hold bets strengthened.
+- VIX 14.9 TRIM — no new aggressive risk per rule 20.
