@@ -517,8 +517,30 @@ approved (buy a leading player at 0.40) no longer existed. Pattern:
   (`26AUG09`), NOT ISO `20260809` — mismatched format returns 0 markets
   silently (hit twice this session).
 
-## NEVER REPRICE A VJ ORDER WITHOUT CONFIRMATION (rule 21, VJ 2026-08-09, HARD)
+## WALL COMPUTATION — MANDATORY STANDARD (VJ 2026-08-09, STL lesson, HARD)
 
+**ALWAYS use the exact skill algorithm for wall quotes — never ad-hoc:**
+
+```
+top = last level price
+floor = max(0.05, 0.25 * top)          # TRASH FLOOR — drops lottery bids
+qual = levels where price >= floor
+density: for each level, vol = sum(sizes within ±3c)
+wall = level with MAX neighborhood volume (ties → cheaper)
+VWAP = size-weighted mean of that neighborhood
+```
+
+**Failures to never repeat:**
+- **STL 08-09 (this session):** ad-hoc script used trash-floor `>=0.05` (wrong —
+  should be `0.25×ref`). Deep 0.08×1001 lottery bid survived density mode →
+  reported garbage wall `(0.08)` instead of real **0.37×2502**. VJ caught it —
+  his read was right. Top-cluster (0.46-0.50) was ALSO bait: the money sat at
+  0.37.
+- **Ribecai 08-05:** top-10 PMXT truncation vs full-ladder wall.
+- Pattern: ANY wall quote without trash-floor + density mode on FULL ladder =
+  wrong. `kalshi.get_orderbook_full` only, always.
+
+## NEVER REPRICE A VJ ORDER WITHOUT CONFIRMATION (rule 21, VJ 2026-08-09, HARD)
 VJ specifies a price zone → place AT THAT ZONE. Book moved so approved price
 no longer the wall / fillable:
 
