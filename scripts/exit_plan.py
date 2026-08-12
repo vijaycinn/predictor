@@ -78,13 +78,17 @@ def resting_exit_exists(ticker, position_side):
     for o in orders:
         if o.get("ticker") != ticker:
             continue
-        side = (o.get("side") or "").lower()
+        # Kalshi V2 canonical form: SELL YES = side=yes, action=sell.
+        # Checking `side` alone is wrong (bb2d220 bug 08-12): LONG exits
+        # were never matched -> cron placed a dupe every 12h tick.
+        # Match on action instead: sell closes LONG, buy closes SHORT.
+        action = (o.get("action") or "").lower()
         if position_side == "LONG":
-            if side == "no":
-                return True  # resting sell = exit for long
+            if action == "sell":
+                return True  # resting SELL YES = exit for long
         else:
-            if side == "yes":
-                return True  # resting buy = exit for short
+            if action == "buy":
+                return True  # resting BUY YES = exit for short
     return False
 
 
