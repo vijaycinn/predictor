@@ -2,7 +2,25 @@
 
 VJ forwards macro-economic news here for perspective on choosing Kalshi markets.
 This file is the persisted reference — memory only carries a pointer.
-Updated: 2026-08-05.
+Updated: 2026-08-12.
+
+## US CPI (July, released 2026-08-12)
+
+- **JULY CPI +0.1% m/m**; est. +0.1% → **in-line**
+- **JULY CPI +3.4% y/y**; est. +3.4% → **in-line**
+- **JULY CORE CPI +0.2% m/m**; est. +0.2% → **in-line**
+- **JULY CORE CPI +2.5% y/y**; est. +2.5% → **in-line**
+- Energy: -1.5%
+
+Read: no cause for alarm, no surprise. Disinflation intact but not collapsing → Fed hold remains base case.
+
+## Market read (prediction markets, post-print)
+
+- Fed HOLD Sept: **68.2%** (favored)
+- 25bp cut: 17%
+- Hike: 9.6%
+
+Check: KXCPINDEX-26AUG12-T334.0 (LONG 1.00, exit resting @0.91) — CPI 334.0 index = +3.4% y/y, in-line → resolves in favor. No new trades implied; hold bets correctly priced.
 
 ## US Labor Market (Jul 25 week)
 
