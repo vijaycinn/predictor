@@ -148,10 +148,15 @@ HARD).** Two live bugs fixed — keep them fixed:
 1. **ENTRY ORDERS MASK MISSING EXITS.** "Any resting order on ticker = exit
    exists" is WRONG. A leftover BUY YES @0.12 entry on KXCPINDEX masked a
    MISSING 0.91 exit (position sat unprotected through CPI week). The exit
-   check must be direction-aware: LONG (qty>0) → resting SELL side (side=no)
-   counts as exit; SHORT (qty<0) → resting BUY side (side=yes) counts.
-   Entry-direction orders do NOT count. After any exit run, verify every
-   open position shows a matching exit-direction resting order.
+   check must be direction-aware: LONG (qty>0) → resting SELL-side order
+   counts as exit; SHORT (qty<0) → resting BUY-side order counts. Match on
+   the **`action` field, NOT `side`** (fix 2026-08-12): Kalshi V2 canonical
+   form of "SELL YES" is `side=yes, action=sell` — checking `side=="no"`
+   for LONG exits never matches, and the 12h exit-plan-maintain cron placed
+   a fresh LONG exit EVERY tick (8 identical resting pairs found 08-12,
+   all LONG). sell → LONG exit, buy → SHORT exit. Entry-direction orders do
+   NOT count. After any exit run, verify every open position shows a
+   matching exit-direction resting order.
 2. **MANUAL + CRON RACE → DUPLICATE EXITS.** Running `exit_plan.py --place`
    while cron `exit-plan-maintain` fires the same hour = TWO exit orders per
    position (8 dupes found 08-10; double-sell = short-flip risk if both
@@ -1191,6 +1196,9 @@ with synthetic ladders, live smoke):
 
 ## References
 
+- `references/kalshi-v2-order-canonical.md` — Kalshi V2 canonical order
+  forms (side vs action) + dupe-exit audit recipe (2026-08-12 bug: dedup
+  checking `side=="no"` for LONG exits never matched — match `action`).
 - `references/hypertracker-perps.md` — HyperTracker (CoinMarketMan) crypto
   perps research: free dashboard scrape via web_extract, API endpoints
   (positions/heatmap, liquidation-heatmap export, liquidation fills), 100/day
