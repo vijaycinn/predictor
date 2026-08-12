@@ -4,6 +4,12 @@ VJ forwards macro-economic news here for perspective on choosing Kalshi markets.
 This file is the persisted reference — memory only carries a pointer.
 Updated: 2026-08-12.
 
+## Geopolitical (2026-08-12, VJ forward)
+
+- **Iran: war with US to continue 2+ years, until Trump term ends 2029** (IRGC adviser Naqdi interview). Explicit attrition strategy: prolong war, missile production > launch rate, threatens US economic interests worldwide.
+- Read (rule 18): ESCALATION, long-duration → oil ▲, gold ▲, VIX ▲, risk-OFF. Not a one-off strike — multi-year commitment = sustained risk premium.
+- Flag: KXGOLDMON ×3 SHORT (below-strike bets) conflict with escalation → gold ▲. Market already prices YES 70-99%. Losers ride (rule 6) — no stop-loss; watch at 7pm CST window.
+
 ## US CPI (July, released 2026-08-12)
 
 - **JULY CPI +0.1% m/m**; est. +0.1% → **in-line**
