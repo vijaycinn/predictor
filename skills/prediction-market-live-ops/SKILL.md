@@ -705,6 +705,20 @@ Geopolitical choke-point incidents (Hormuz, Suez, Bab el-Mandeb, straits) →
   side or cheap low strikes); risk-OFF (escalation) = above strikes, cheap
   high strikes. Same gates as any hunt: limit-only, YES ≤40c, ≥50% win floor
   from independent source (here: the geo feed itself).
+- **MARKET-LAG CHECK (2026-08-13, ceasefire-expiry play):** when VJ says
+  "markets lagging the geo situation", VERIFY before sizing: pull live spot
+  (gold/oil via investor-agent `get_stock_info` price module), compare Kalshi
+  ladder quotes to spot, and confirm the catalyst timeline. Verified lag:
+  ceasefire expired ~Aug 10, Hormuz traffic at one-week low (Reuters), yet
+  WTI $82 / VIX 14.55 = complacent → longer-dated oil-above-strike YES
+  (Nov 3, ~3 months out) was the lag trade, NOT the Aug 14 settlement (closes
+  next day, needs +$3 overnight — too tight). Gold had ALREADY repriced
+  (above-strike YES 74%) = no lag left there. Rule: pick strikes whose
+  settlement date covers the catalyst window, not the nearest expiry.
+- **VIX gate interaction (rule 20):** VIX <15 = TRIM = no new aggressive
+  risk-off size by default. VJ overrides explicitly ("override rule 20 for
+  nov wti") — that is the ONLY valid path; never self-override. Log the
+  override in the order rationale.
 - Verified 2026-08-02: feed classified Hormuz deal-in-sight as DE-ESCALATION →
   RISK-ON (oil ▼). Correctly killed the USO post-market +3.5% → WTI-spike
   thesis.
@@ -1202,6 +1216,41 @@ with synthetic ladders, live smoke):
 - **Kalshi quote endpoint can lag the orderbook in-play** (Huang 08-09: quote
   0.41/0.44 vs live ladder top bid 0.35×9482, Robinhood 37¢). Read the
   full-ladder book for live win-prob, per Sabalenka lesson.
+
+## Postponed-match markets — ticker date ≠ play date (2026-08-13, Tomic/Winter lesson)
+
+ATP Challenger match `KXATPCHALLENGERMATCH-26AUG11TOMWIN` (Tomic vs Winter)
+was created for Aug 11 but POSTPONED and played Aug 13 00:35Z. Market stayed
+`status: active`. Traps hit when analyzing a "past" match that is still open:
+
+1. **`expected_expiration_time` ≠ `expiration_time` = postponement flag**:
+   Tomic event expected_expiration Aug 11 20:30Z but expiration Aug 25 17:30Z
+   — rules: postponed match stays open until rescheduled match finishes
+   (within two weeks). If a dated ticker's market is still active past the
+   date AND expiration is extended, assume postponed, not resolved.
+2. **Quote endpoint goes STALE on postponed markets**: `/markets/{ticker}`
+   showed `updated_time` 00:32Z (BEFORE the 00:35Z match start) with Tomic
+   0.58/0.59 while the match was 1h50m in. Live truth = full-ladder orderbook
+   (`kalshi.get_orderbook_full`) + the trades feed, NOT the quote. Robinhood
+   (KalshiEX-backed) AND Polymarket gamma can BOTH carry the stale
+   pre-postponement price (Tomic ~57-61c while Winter led a set, Sofascore
+   model 62% Winter). Venue-wide stale print ≠ cross-venue confirmation.
+3. **Rescheduled date lives on the aggregators**: Robinhood event page says
+   "Event day: August 12, 2026"; tennis.com lists the match under the NEW date
+   URL (`b-tomic-vs-e-winter-2026-08-13`). Resolve actual play date via ATP
+   live-scores before believing any market read.
+4. **Trade feed field names (v2)**: `/markets/trades` returns `count_fp`,
+   `yes_price_dollars`, `taker_book_side`, `taker_outcome_side`, `taker_side`
+   — NOT `price`/`count` (those print null). `taker_side: yes|no` = which
+   outcome the taker bought; `yes_price_dollars` = execution price.
+5. **ATP official live-scores page = definitive for challengers**:
+   `atptour.com/en/scores/current-challenger/<tournament>/<id>/live-scores`
+   carries live set score + a text feed ("Edward Winter wins the 1st set
+   7-6(3)."). Beat Sofascore/tennisstats staleness with it. Also verified this
+   session: tennis.com match pages render live score+stats for challengers;
+   Sofascore match page works via web_extract (Cloudflare sometimes blocks);
+   tennisstats H2H page showed a stale/auto-generated "RECENT RESULT"
+   verdict that disagreed with the live feed — cross-check, don't trust one.
 
 ## References
 
