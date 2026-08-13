@@ -60,49 +60,93 @@ def open_positions():
     return out
 
 
-def resting_exit_exists(ticker, position_side):
-    """True if we already have a resting EXIT-direction order on this ticker.
+def resting_exit_state(ticker, position_side, threshold):
+    """(exists, cover) for resting EXIT-direction orders on this ticker.
 
     position_side: 'LONG' (qty>0, bought YES) or 'SHORT' (qty<0, bought NO).
-    LONG exit = resting SELL YES (side no/ask) → locks profit at 0.91.
-    SHORT exit = resting BUY YES (side yes/bid at ~0.09) → locks NO at 0.91.
-    An ENTRY-direction resting order does NOT count as an exit:
-    - side yes (buy) on a LONG = leftover entry bid, NOT an exit (KXCPINDEX
-      08-10: buy-YES@0.12 masked a missing 0.91 exit).
-    - side no (sell) on a SHORT = leftover entry ask, NOT an exit."""
+    LONG exit = resting SELL YES @ ~threshold (0.91 default) → locks profit.
+    SHORT exit = resting BUY YES @ ~(1-threshold) (0.09) → locks NO at 0.91.
+
+    An order only counts as an exit when it matches ALL THREE:
+      - action matches the exit direction (sell closes LONG, buy closes SHORT)
+      - price is in the exit band (±0.03 around the target limit) — an unfilled
+        ENTRY with the same action (e.g. a SELL YES @ 0.60 short-entry on a
+        LONG, or a BUY YES @ 0.46 long-entry on a SHORT) is NOT an exit
+      - remaining_count covers the open qty (sum of remaining across matches)
+    An unfilled entry at the SAME price as the exit (e.g. WTI BUY YES @ 0.09,
+    identical shape to a SHORT exit) is inherently ambiguous — the entry-in-
+    flight guard in plan() handles that side.
+
+    Returns (bool, float cover): cover = total remaining contracts of matching
+    exits, so the caller can place only the uncovered remainder instead of
+    over-exiting when a position grew after a partial exit fill."""
+    target = threshold if position_side == "LONG" else round(1 - threshold, 2)
+    lo, hi = round(target - 0.03, 2), round(target + 0.03, 2)
+    want_action = "sell" if position_side == "LONG" else "buy"
     try:
         orders = kalshi.get_orders(status="resting")
     except Exception as e:
         print(f"  resting check ERR {ticker}: {str(e)[:80]}")
-        return True  # fail closed: don't duplicate on uncertainty
+        return True, 0.0  # fail closed: don't duplicate on uncertainty
+    cover = 0.0
     for o in orders:
         if o.get("ticker") != ticker:
             continue
-        # Kalshi V2 canonical form: SELL YES = side=yes, action=sell.
-        # Checking `side` alone is wrong (bb2d220 bug 08-12): LONG exits
-        # were never matched -> cron placed a dupe every 12h tick.
-        # Match on action instead: sell closes LONG, buy closes SHORT.
         action = (o.get("action") or "").lower()
-        if position_side == "LONG":
-            if action == "sell":
-                return True  # resting SELL YES = exit for long
-        else:
-            if action == "buy":
-                return True  # resting BUY YES = exit for short
+        if action != want_action:
+            continue  # entry-direction order — never counts as exit
+        try:
+            px = float(o.get("yes_price_dollars") or 0)
+        except (TypeError, ValueError):
+            px = 0.0
+        if px < lo or px > hi:
+            continue  # entry at a non-exit price — not an exit
+        try:
+            cover += float(o.get("remaining_count_fp") or 0)
+        except (TypeError, ValueError):
+            cover += 0.0
+    return cover > 0, cover
+
+
+def resting_entry_in_flight(ticker, position_side, qty):
+    """True if an ENTRY-direction order still rests on this ticker with
+    remaining >= |qty| — i.e. the position is not settled and an exit on the
+    other side would be premature (VJ 2026-08-13: never set an exit order on
+    the other side of an unfilled resting order; it can orphan/flip exposure
+    if the entry cancels or grows).
+
+    LONG position: entry = BUY YES (action=buy). SHORT: entry = SELL YES."""
+    entry_action = "buy" if position_side == "LONG" else "sell"
+    try:
+        orders = kalshi.get_orders(status="resting")
+    except Exception as e:
+        print(f"  entry check ERR {ticker}: {str(e)[:80]}")
+        return False  # fail open on entry check: only blocks placement
+    for o in orders:
+        if o.get("ticker") != ticker:
+            continue
+        if (o.get("action") or "").lower() != entry_action:
+            continue
+        try:
+            if float(o.get("remaining_count_fp") or 0) >= abs(qty) - 0.01:
+                return True
+        except (TypeError, ValueError):
+            continue
     return False
 
 
 def plan(threshold, ttl_h):
-    """Build exit plan. Returns list of (ticker, qty, side, exit_side, limit, exists)."""
+    """Build exit plan. Returns list of (ticker, qty, side, exit_side, limit,
+    exists, cover)."""
     rows = []
     for p in open_positions():
         ticker, qty = p["ticker"], p["qty"]
         pos_side = "LONG" if qty > 0 else "SHORT"
-        exists = resting_exit_exists(ticker, pos_side)
+        exists, cover = resting_exit_state(ticker, pos_side, threshold)
         if qty > 0:  # LONG: sell YES at threshold
-            rows.append((ticker, qty, "LONG", "SELL_YES", threshold, exists))
+            rows.append((ticker, qty, "LONG", "SELL_YES", threshold, exists, cover))
         else:        # SHORT: buy YES at 1-threshold to close
-            rows.append((ticker, qty, "SHORT", "BUY_YES", round(1 - threshold, 2), exists))
+            rows.append((ticker, qty, "SHORT", "BUY_YES", round(1 - threshold, 2), exists, cover))
     return rows
 
 
@@ -122,10 +166,19 @@ def main():
         print(f"exit plan — threshold {args.min:.2f}, TTL {args.ttl_h:.0f}h, "
               f"{'PLACE' if place else 'DRY-RUN'}")
     placed = []
-    for ticker, qty, side, exit_side, limit, exists in rows:
-        if exists:
+    for ticker, qty, side, exit_side, limit, exists, cover in rows:
+        if exists and cover >= abs(qty) - 0.01:
             if not args.quiet:
                 print(f"  {side:5} {qty:>8.2f} {ticker} — exit already resting, skip")
+            continue
+        need = round(abs(qty) - cover, 2)
+        if need <= 0.01:
+            if not args.quiet:
+                print(f"  {side:5} {qty:>8.2f} {ticker} — exit resting covers position, skip")
+            continue
+        if resting_entry_in_flight(ticker, side, qty):
+            if not args.quiet:
+                print(f"  {side:5} {qty:>8.2f} {ticker} — entry still resting (unfilled), skip exit")
             continue
         if exit_side == "SELL_YES":
             desc = f"SELL YES @ {limit:.2f} (locks profit if YES reaches {limit:.2f})"
@@ -135,15 +188,15 @@ def main():
             try:
                 # selling YES = side NO; buying YES = side YES
                 kside = "NO" if exit_side == "SELL_YES" else "YES"
-                resp = kalshi.place_order(ticker, kside, abs(qty), limit,
+                resp = kalshi.place_order(ticker, kside, need, limit,
                                           hours_to_expiry=0, max_lifetime_hours=args.ttl_h)
                 oid = (resp.get("order") or resp).get("order_id")
-                print(f"  PLACED {side:5} {qty:>8.2f} {ticker} — {desc} id={oid}")
+                print(f"  PLACED {side:5} {qty:>8.2f} {ticker} — {desc} x{need} id={oid}")
                 placed.append(oid)
             except Exception as e:
                 print(f"  ERR {ticker}: {str(e)[:120]}")
         else:
-            print(f"  WOULD {side:5} {qty:>8.2f} {ticker} — {desc}")
+            print(f"  WOULD {side:5} {qty:>8.2f} {ticker} — {desc} x{need}")
 
     if args.quiet:
         # watchdog: emit ONLY when something happened (placed orders or errors)
