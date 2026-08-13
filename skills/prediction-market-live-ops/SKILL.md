@@ -538,6 +538,15 @@ approved (buy a leading player at 0.40) no longer existed. Pattern:
 - Verifying wall at placement is cheap (one `get_orderbook_full` call) — do
   it inside the placement script, print the computed wall, and assert limits
   like `assert limit < 0.50` when VJ says "below 0.5".
+- **PLACEMENT SCRIPTS MUST ASSERT, NOT AUTO-ADJUST (2026-08-13, Nov WTI
+  lesson, rule 21 applies to scripts too).** The Nov WTI batch script
+  recomputed walls at placement (correct) but silently placed at the FRESH
+  wall (0.13) when the quoted zone was 0.22 — a 9c move, exactly the
+  >5c case rule 21 says STOP on. Cheaper fill ≠ OK: a wall crash can mean
+  the thesis died. The delta check belongs INSIDE the script: compare
+  fresh wall vs the quoted/proposed zone; if |delta| > 5c, print the move
+  and EXIT non-zero WITHOUT placing — never place at either the old or new
+  level. Only the agent (with VJ) re-confirms after the script stops.
 
 ## Data-source quirks (2026-08-09)
 

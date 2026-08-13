@@ -277,3 +277,13 @@ edge), rule 15 (pre-flight gate), rule 16 (suggestion suppression).
   `risk.wall_check` in executor + `get_orderbook_full` helper (orderbook_fp,
   all levels). VJ: "POOR EXECUTION! IGNORE EXTREME OUTLIERS, FOCUS ON VOL
   WEIGHTED WALL."
+- **2026-08-12 Nov WTI rule-21 deviation**: VJ approved "2x on all 3 at wall,
+  TTL end of month" (rule 20 override for Nov WTI above-strike YES: 84.99/85.99/
+  86.99). Analysis quoted 84.99 wall 0.22 (density peak); at placement the book
+  had moved — fresh wall 0.13. Script auto-placed at fresh wall (cheaper, +margin)
+  instead of STOP + re-confirm per rule 21 (wall moved >5c pre-event). 85.99/
+  86.99 walls stable (0.09/0.09). All 3 resting 2x, TTL Sep 1 00:00Z. VJ accepted
+  the cheaper fill; logged for discipline. Lesson: batch placement script must
+  assert |fresh_wall − quoted_wall| ≤ 5c per strike and abort that strike if the
+  book moved, printing the delta for re-confirmation — even when the move is
+  favorable.
