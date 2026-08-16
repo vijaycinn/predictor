@@ -18,6 +18,14 @@ Rolling log of predictor experiments. One H2 section per experiment, newest firs
 - Next action: exit-policy codification + weekly_review.py fix flagged for VJ (rule 19 report-only). Margin of profit stays the only metric.
 - Evidence: [[LTM/extracted/2026-08-16-zar-exit-lesson]], [[LTM/extracted/2026-08-16-weekly-review-tooling-bugs]]
 
+### 2026-08-16 — DB↔exchange reconciliation (data-integrity experiment)
+- Hypothesis: local `trades` DB mirrored exchange positions.
+- Setup: diff `db.open_positions()` vs `kalshi.get_positions()` + `get_fills(1000)`.
+- Outcome: FAILED — 4 reported open vs 11 real. INNER JOIN markets dropped 13 positions; 10 trades size=0.0; 8 stale-finalized still OPEN; 2 exchange positions missing from DB; Donski mislabeled loss (actually WIN).
+- Root cause: (1) `open_positions()` INNER JOIN cache table; (2) manual execution path skipped size capture; (3) resolution never reconciled stale OPEN; (4) retrospective written pre-resolution.
+- Fix: LEFT JOIN; exit_reason column; size from fill count_fp; close 8 finalized; insert 2 missing; correct Donski. Now 11 == 11, zero drift.
+- Lesson: reconcile DB against exchange EVERY weekly review — drift is silent and compounds. See [[Kalshi/learnings]] L1-L5.
+
 ### 2026-08-16 — Proposal gating behavior (DB census)
 - 4,531 signals → 4,377 SKIP / 138 HOLD / 16 BUY; 6 proposals; 1 APPROVED (ZAR), 3 REJECTED (HOLD/SKIP not tradable), 1 REJECTED (spread boundary), 1 EXPIRED (undecided 15.5h). Engine is a disciplined no-trader; manual VJ fills are the actual trade flow. See [[LTM/extracted/2026-08-16-proposal-engine-quirks]].
 

@@ -70,6 +70,33 @@ Wins, losses, edge cases, recurring blind spots. One entry per lesson, newest fi
 - `exit_reason` column added to trades + `cli.py close --reason` wired (rule 6 exit-rationale data gap closed).
 - RULES.md retrospective Donski row corrected: was "0.00 loss", actually `result=yes` WIN (+$0.10). Repricing lesson unchanged.
 
+## Lessons (durable, transferable — 2026-08-16 reconciliation pass)
+
+### L1: INNER JOIN silently drops live positions
+- **Root cause**: `open_positions()` JOINed `markets` — any OPEN trade missing a markets row vanished from the count. Reported 4 open, reality 11.
+- **Pattern to avoid**: position/order counting that depends on a join to a cache table (`markets`). Cache misses become phantom-zero positions.
+- **Correct pattern**: LEFT JOIN for anything counted (positions, orders, caps). Or count from `trades` alone, join only for display columns. Verify count against exchange (`get_positions()`) every reconciliation.
+- **Class**: Kalshi STATUS TRAP family — local DB silently diverges from exchange truth. EXISTS ≠ WORKS. DB ≠ exchange.
+
+### L2: Exchange `result`/`status` fields are truth, not your notes
+- **Root cause**: RULES.md retrospective wrote Donski "0.00 loss" from an Aug-2 snapshot; exchange `result=yes` → actual WIN +$0.10.
+- **Pattern to avoid**: persisting a resolved outcome from a mid-flight snapshot or memory. Retrospective tables written pre-resolution go stale silently.
+- **Correct pattern**: resolution = `status in (settled, finalized)` + `result` field, fetched fresh from exchange. Reconcile retrospective tables against exchange before trusting P&L numbers. Notes are narrative; exchange is ledger.
+
+### L3: Manual-execution path records size=0.0
+- **Root cause**: manual `LiveExecutor` fills (VJ app buys) inserted trades with `size=0.0` while exchange carried real contract counts (2/5/8/100/55...). Proposal-gated path captured size; manual path didn't.
+- **Pattern to avoid**: two execution paths writing trades with different field completeness. The gated path and manual path must record identical fields.
+- **Correct pattern**: one `record_trade` path for all fills; size always from exchange fill `count_fp`, never defaulted. Reconcile `size` against fills on every weekly review.
+
+### L4: Prompt/config drift silently changes risk posture
+- **Root cause**: cron prompt said "max 2 open / 2c edge" while config said 16 / 3c — operator believes one cap, system enforces another. 11 positions open under the loose cap.
+- **Pattern to avoid**: hardcoding policy numbers in cron prompts / scripts instead of reading config. Numbers rot in two places and drift.
+- **Correct pattern**: single source of truth (config + `cli.py max-open` runtime override). Prompts/scripts read the value, never restate it. Any hardcoded policy number = drift bug waiting.
+
+### L5: Exits without rationale are an un-auditable data gap
+- **Root cause**: ZAR exit @0.58 (pre-resolution) carried no reason field — couldn't distinguish rule-breaking exit from VJ-directed exit.
+- **Correct pattern**: `exit_reason` column + `cli.py close --reason`. Every close logs why (91c-TP / VJ-direction / resolved). No silent exits.
+
 ## Related
 - [[rules]]
 - [[Predictor/experiment-log]]
