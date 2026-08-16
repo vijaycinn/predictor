@@ -80,7 +80,8 @@ CREATE TABLE IF NOT EXISTS trades (
     order_status TEXT,
     requested_size REAL,
     filled_size REAL,
-    ttl_expires_at REAL
+    ttl_expires_at REAL,
+    exit_reason TEXT
 );
 
 CREATE TABLE IF NOT EXISTS outcomes (
@@ -139,7 +140,7 @@ def connect(db_path: str | Path) -> sqlite3.Connection:
         except sqlite3.OperationalError:
             pass
     for col in ("exchange_order_id TEXT", "order_status TEXT", "requested_size REAL",
-                "filled_size REAL", "ttl_expires_at REAL"):
+                "filled_size REAL", "ttl_expires_at REAL", "exit_reason TEXT"):
         try:
             conn.execute(f"ALTER TABLE trades ADD COLUMN {col}")
         except sqlite3.OperationalError:
@@ -270,9 +271,12 @@ def set_market_resolved(conn, condition_id: str, result_yes: int, final_price: f
 
 
 def open_positions(conn) -> list[dict]:
+    """Open trades. LEFT JOIN so trades without a markets row still count —
+    otherwise the position cap under-counts (4 vs 11 real exchange positions,
+    2026-08-16). question/category may be None."""
     rows = conn.execute(
         """SELECT t.*, m.question, m.category, m.condition_id as cid
-           FROM trades t JOIN markets m ON m.condition_id = t.condition_id
+           FROM trades t LEFT JOIN markets m ON m.condition_id = t.condition_id
            WHERE t.status='OPEN' ORDER BY t.created_at DESC"""
     ).fetchall()
     return [dict(r) for r in rows]

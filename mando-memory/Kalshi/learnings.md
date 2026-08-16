@@ -62,6 +62,14 @@ Wins, losses, edge cases, recurring blind spots. One entry per lesson, newest fi
 - predictor-scan cron reads cap dynamically — never hardcodes (was "16").
 - RULES.md rule 6 documents the mechanism. Config fallback stays 16.
 
+## 2026-08-16 DB↔exchange reconciliation (be-thorough pass)
+- Root cause found: `open_positions()` used INNER JOIN markets → dropped 13 real positions (4 vs 17 in DB, 11 real). Fixed to LEFT JOIN. Now 11 DB == 11 exchange, zero drift both directions.
+- 8 stale tennis/WTI/Brent trades still OPEN but finalized on exchange → CLOSED with correct pnl (Dondes WON +$0.10, Brent NO won +$1.10, rest losses). Exchange `result` field = truth.
+- 2 positions on exchange missing from DB (gold T3451.99 NO, crypto-structure YES) → inserted.
+- 10 trades had size=0.0 while exchange had real fills (BTC 2/5/8, Fed 3/2/11, Zhukov 100, Filiz 55, etc.) → repaired from exchange fills.
+- `exit_reason` column added to trades + `cli.py close --reason` wired (rule 6 exit-rationale data gap closed).
+- RULES.md retrospective Donski row corrected: was "0.00 loss", actually `result=yes` WIN (+$0.10). Repricing lesson unchanged.
+
 ## Related
 - [[rules]]
 - [[Predictor/experiment-log]]

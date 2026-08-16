@@ -196,8 +196,9 @@ def cmd_close(args):
             resp = ks.place_order(t["condition_id"], side, size, exit_px, reduce_only=True)
             print(f"#{tid}: live sell order placed (reduce_only) at {exit_px}: {resp}")
         db.update_trade(conn, tid, {"status": "CLOSED", "fill_price": exit_px, "pnl": pnl,
-                                    "order_status": "closed_manual"})
-        print(f"#{tid}: closed {side} x{size:.0f} entry={entry:.4f} exit={exit_px:.4f} pnl=${pnl:.2f}")
+                                    "order_status": "closed_manual",
+                                    "exit_reason": args.reason})
+        print(f"#{tid}: closed {side} x{size:.0f} entry={entry:.4f} exit={exit_px:.4f} pnl=${pnl:.2f} reason={args.reason}")
 
 
 def cmd_cancel(args):
@@ -324,6 +325,7 @@ def main():
     p_cl = sub.add_parser("close", help="close an open position (paper: at book; live: reduce_only sell)")
     p_cl.add_argument("ids", nargs="+", type=int, help="trade IDs")
     p_cl.add_argument("--venue", default=None, choices=["polymarket", "kalshi", "polymarket_us"])
+    p_cl.add_argument("--reason", default="manual", help="exit rationale (rule 6: 91c+ TP or VJ direction; logged to DB exit_reason)")
     p_cl.set_defaults(func=cmd_close)
 
     p_cx = sub.add_parser("cancel", help="cancel a resting order (live: also on exchange)")

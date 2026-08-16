@@ -248,7 +248,7 @@ the process is luck, not skill — both get analyzed.
 
 | Bet | Paid | State now | Root cause |
 |-----|------|-----------|------------|
-| Donski YES | 0.90 | 0.00 | Stale book repriced in-play; no price guard; no independent prob |
+| Donski YES | 0.90 | 1.00 (WON +$0.10) | Stale book repriced in-play 0.34→0.90; no price guard; no independent prob. Lesson (repricing) stands — but outcome was a WIN, not a loss. Corrected 2026-08-16 vs exchange `result=yes`. |
 | Zhukov YES | 0.01 | 0.00 | Lottery: 1% outcome, no research |
 | Filiz YES | 0.02 | 0.00 | Lottery: 2% outcome, no research |
 | Young YES | 0.07 | 0.00 | Lottery: 7% outcome, no research |
