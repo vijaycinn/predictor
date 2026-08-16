@@ -97,6 +97,13 @@ Wins, losses, edge cases, recurring blind spots. One entry per lesson, newest fi
 - **Root cause**: ZAR exit @0.58 (pre-resolution) carried no reason field — couldn't distinguish rule-breaking exit from VJ-directed exit.
 - **Correct pattern**: `exit_reason` column + `cli.py close --reason`. Every close logs why (91c-TP / VJ-direction / resolved). No silent exits.
 
+## 2026-08-16 arb gap analysis (Oracle Boar tweet → action list)
+- Predictor arb = cross-venue only (sell-only Kalshi, rule 10). Two arb games missing: intra-market rebalancing (sum YES ≠ $1) + combinatorial (related markets drift).
+- Action list: [[Predictor/predictor-improvements-todo]] — P1 sumarb scanner + coverage guard, P2 combinatorial + arb sizing carve-out, P3 basket hygiene + P&L tagging.
+- Key rule-10 clarification: basket arb buys ALL outcomes at once = risk-free, NOT directional buy-side capture.
+- Source: https://x.com/i/status/2083525491093286989, paper https://arxiv.org/pdf/2508.03474
+
 ## Related
 - [[rules]]
 - [[Predictor/experiment-log]]
+- [[Predictor/predictor-improvements-todo]]

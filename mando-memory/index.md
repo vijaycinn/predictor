@@ -20,6 +20,7 @@ Map of content. Every vault note linked below. Add new notes here when created.
 
 ## Predictor
 - [[Predictor/experiment-log]] — rolling experiment log, newest first
+- [[Predictor/predictor-improvements-todo]] — arb gap action list (2026-08-16)
 - Predictor/runs/ — per-run detail notes
 
 ## Kalshi
