@@ -47,10 +47,10 @@ execution:
 risk:
   capital_usd: 1000
   max_trade_usd: 1.0        # LIVE cap: $1 per trade (VJ set 2026-08-01)
-  # max_arb_usd: 5.0        # RISK-FREE basket cap (sum-to-1/monotonicity/comb).
-                            # Unset = falls back to max_trade_usd. Set only with
-                            # VJ approval — arb baskets are risk-free, so $1 cap
-                            # kills them (6c basket = $0.06). POLICY: VJ decides.
+  max_arb_usd: 2.0          # RISK-FREE basket cap (sum-to-1/monotonicity/comb).
+                            # Unset = falls back to max_trade_usd. VJ set 2.0
+                            # 2026-08-16 — arb baskets are risk-free, so $1 cap
+                            # kills them; $2 lets a real fill harvest >pocket change.
   margin_trading: false     # NO MARGIN TRADING EVER — code asserts this stays false (all modes)
   max_open_positions: 16    # raised 2026-08-02: 7 book + 8 tennis underdog + headroom
   max_per_trade_frac: 0.20
