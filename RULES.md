@@ -80,6 +80,11 @@ the process is luck, not skill — both get analyzed.
    would expire 1.5h before the 21:00Z call; VJ set 8h to survive to start.
 6. **$1/trade cap.** `risk.max_trade_usd: 1.0`. No margin ever (code asserts).
    Position cap per config. No stop-loss — ride to resolution.
+   **NO PRE-RESOLUTION EXIT (VJ 2026-08-16, ZAR lesson, HARD).** Never exit
+   an open position before resolution unless (a) take-profit ≥91c (rule 6b)
+   or (b) explicit VJ direction. ZAR buy 1@0.59 exited @0.58 → resolved YES
+   0.99: −$0.0441, −7.5% margin, +$0.393 left on table. Exits carry no
+   reason field today — data gap; log rationale in chat when exiting.
 6b. **TAKE-PROFIT — 91c+ EXIT (VJ 2026-08-09, Sabalenka lesson, HARD).** Live
    sports position whose market YES price reaches **≥0.91** → place reduce_only
    IOC sell at the bid wall, lock the profit. Do NOT ride a 91c+ winner to

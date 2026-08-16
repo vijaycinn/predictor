@@ -366,7 +366,9 @@ def normalize_market(m: dict) -> dict:
         "outcome_prices": [yes_bid, 1.0 - yes_bid],
         "clob_token_ids": [ticker, ticker],  # Kalshi has no token ids; ticker doubles
         "active": m.get("status") == "open",
-        "closed": m.get("status") in ("closed", "settled"),
+        "closed": m.get("status") in ("closed", "settled", "finalized"),
+        "status": m.get("status"),
+        "result": m.get("result"),  # "yes"/"no" once settled/finalized (weekly_review relies on it)
         "market_type": "binary",
         "fees_enabled": False,  # Kalshi currently zero trading fees
         "taker_base_fee": 0.0,

@@ -131,12 +131,14 @@ def main():
         buy_price = float(fl[0].get("yes_price_dollars") or fl[0].get("no_price_dollars") or 0)
         qty = sum(float(x.get("count_fp", 0)) for x in fl)
         side = fl[0].get("side", "?")
-        # resolve outcome via market
+        # resolve outcome via market: settled/finalized status + result field
+        # (outcome_prices is the LIVE bid, not the resolution — using it made
+        # weekly_review blind to resolved trades; fixed 2026-08-16)
         try:
             m = kalshi.fetch_market_by_id(ticker)
-            prices = m.get("outcome_prices") or []
-            resolved = m.get("closed", False)
-            yes_resolved = float(prices[0]) if prices else 0.0  # 1.0 = YES won
+            resolved = m.get("status") in ("settled", "finalized")
+            res = (m.get("result") or "").lower()
+            yes_resolved = 1.0 if res == "yes" else (0.0 if res == "no" else None)
         except Exception:
             resolved = False
             yes_resolved = None
