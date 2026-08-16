@@ -232,6 +232,54 @@ def cmd_cancel(args):
         print(f"#{tid}: cancelled")
 
 
+def cmd_sumarb(args):
+    """Intra-market sum-to-1 rebalancing arb scanner (report-only)."""
+    from predictor import sumarb
+    res = sumarb.scan(min_edge_cents=args.min_edge, limit=args.limit)
+    print(f"markets fetched: {res['markets_fetched']} | events seen: {res['events_seen']} | "
+          f"partition candidates: {res['partition_candidates']} | opportunities: {len(res['opportunities'])}")
+    if not res["opportunities"]:
+        print("\nNo sum-to-1 arb opportunities above min edge after fees/slippage.")
+        return
+    for o in res["opportunities"]:
+        print()
+        print(sumarb.format_opportunity(o))
+    if args.json:
+        print("\n" + json.dumps(res["opportunities"], indent=2, default=str))
+
+
+def cmd_comb(args):
+    """Combinatorial arb: auto-discovered ladder monotonicity + winner/margin."""
+    from predictor import combinatorial
+    print("[combinatorial] ladder monotonicity (auto-discovered series)")
+    print("=" * 72)
+    series = combinatorial.discover_ladder_series()
+    found = 0
+    for s in series:
+        viols = combinatorial.monotonicity_violations(s, min_volume=args.min_vol)
+        for v in viols:
+            found += 1
+            print(f"  {v['series']}: P(>{v['lower_strike']:.0f}) ask {v['lower_yes_ask']:.3f} "
+                  f"< P(>{v['upper_strike']:.0f}) ask {v['upper_yes_ask']:.3f} | net {v['net_edge']*100:+.1f}c "
+                  f"{'TRADE' if v['net_edge'] > 0 else 'no-edge'}")
+            print(f"      {v['lower_ticker']} | {v['upper_ticker']}")
+    if found == 0:
+        print("  no monotonicity violations found")
+    print("=" * 72)
+    print("[combinatorial] winner vs margin dependency")
+    print("=" * 72)
+    wm = combinatorial.scan_winner_margin(min_edge_cents=args.min_edge)
+    print(f"winner markets: {wm['winner_markets']} | margin markets: {wm['margin_markets']} | violations: {len(wm['violations'])}")
+    for v in wm["violations"]:
+        print(f"  {v['subject'][:30]:32} winner ask {v['winner_yes_ask']:.3f} < margin "
+              f"(>{v['margin_threshold']}) ask {v['margin_yes_ask']:.3f} | net {v['net_edge']*100:+.1f}c")
+        print(f"      {v['winner_ticker']} | {v['margin_ticker']}")
+    if args.json:
+        print("\n" + json.dumps({"monotonicity": [
+            v for s in series for v in combinatorial.monotonicity_violations(s, min_volume=args.min_vol)],
+            "winner_margin": wm["violations"]}, indent=2, default=str))
+
+
 def cmd_arb(args):
     """Predexon-driven arb check: Kalshi candidates vs Polymarket equivalents."""
     from predictor import arb, predexon
@@ -340,6 +388,18 @@ def main():
     p_arb.add_argument("--min-volume", type=int, default=5000, help="min Kalshi dollar volume")
     p_arb.add_argument("--limit", type=int, default=30, help="max opportunities")
     p_arb.set_defaults(func=cmd_arb)
+
+    p_sumarb = sub.add_parser("sumarb", help="intra-market sum-to-1 rebalancing arb (report-only)")
+    p_sumarb.add_argument("--min-edge", type=float, default=3, help="min net edge in cents (default 3)")
+    p_sumarb.add_argument("--limit", type=int, default=20, help="max opportunities")
+    p_sumarb.add_argument("--json", action="store_true", help="dump opportunities as JSON")
+    p_sumarb.set_defaults(func=cmd_sumarb)
+
+    p_comb = sub.add_parser("comb", help="combinatorial arb: ladder monotonicity + winner/margin (report-only)")
+    p_comb.add_argument("--min-edge", type=float, default=2, help="min net edge in cents for winner/margin (default 2)")
+    p_comb.add_argument("--min-vol", type=float, default=0.0, help="min volume per leg for ladder scan")
+    p_comb.add_argument("--json", action="store_true", help="dump violations as JSON")
+    p_comb.set_defaults(func=cmd_comb)
 
     p_cal = sub.add_parser("calibrate", help="calibration report")
     p_cal.set_defaults(func=cmd_calibrate)

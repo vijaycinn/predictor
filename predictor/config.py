@@ -44,6 +44,7 @@ DEFAULTS: dict = {
     "risk": {
         "capital_usd": 1000,
         "max_trade_usd": 2.0,
+        "max_arb_usd": None,
         "margin_trading": False,
         "max_open_positions": 5,
         "max_per_trade_frac": 0.20,

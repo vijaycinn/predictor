@@ -18,6 +18,14 @@ MARGIN OF PROFIT** — win rate is vanity, profit is the job (VJ 2026-08-02).
 - **Order lifecycle**: GTC/IOC limit orders → reconcile each scan → resolution
 - **Learning loop**: outcome tracking, calibration, Karpathy-style
   metric-vs-decision analysis (weekly review)
+- **Intra-market arb (`sumarb`)**: sum-to-1 rebalancing — a multi-outcome
+  market's YES prices must sum to $1; drift off $1 = risk-free basket.
+  Report-only, coverage-guarded (no catch-all outcome → flagged, not traded).
+- **Combinatorial arb (`comb`)**: ladder monotonicity (P(>lower) ≥ P(>upper),
+  auto-discovered series, close-time grouped) + winner↔margin dependency
+  (narrow outcome must not exceed the broad outcome that contains it).
+- **Arb sizing carve-out**: `risk.max_arb_usd` — risk-free baskets aren't
+  $1-capped like directional bets (unset → falls back to max_trade_usd).
 - **Cron-ready**: live-flip scanner (30m), geo-trades scan (7pm CT),
   weekly order review (Sun 1am CT), all agent-driven
 
@@ -82,6 +90,10 @@ python3 cli.py close <trade_id>              # manual exit (live: reduce_only se
 python3 cli.py cancel <trade_id>             # cancel resting order
 python3 cli.py calibrate                     # reliability table, Brier, category bias
 python3 cli.py resolve                       # settle closed markets
+python3 cli.py arb --check                   # cross-venue arb (Kalshi vs PM, Predexon)
+python3 cli.py arb --pmxt                    # PMXT Router arb feed
+python3 cli.py sumarb --min-edge 3           # intra-market sum-to-1 rebalancing arb (report-only)
+python3 cli.py comb --min-edge 2             # combinatorial arb: ladder monotonicity + winner/margin
 python3 scripts/live_flip_scan.py            # live flip-zone candidates (cron 30m)
 python3 scripts/geo_scan.py                  # DeItaone geo read -> Kalshi shortlist (cron 7pm CT)
 python3 scripts/search_market.py "query"     # Kalshi name/ticker search (full pagination)
@@ -146,6 +158,9 @@ discover (per-category, volume-gated)
 - `predictor/executor.py` — paper/live executors, order lifecycle reconcile
 - `predictor/scanner.py` — scan orchestration + approval-gated execution
 - `predictor/learn.py` — resolution, calibration, performance
+- `predictor/arb.py` — cross-venue arb (Kalshi vs Polymarket, strict matching)
+- `predictor/sumarb.py` — intra-market sum-to-1 rebalancing arb (report-only)
+- `predictor/combinatorial.py` — ladder monotonicity + winner↔margin arb
 
 ## Predexon layer (primary market-data tool)
 

@@ -103,6 +103,32 @@ Wins, losses, edge cases, recurring blind spots. One entry per lesson, newest fi
 - Key rule-10 clarification: basket arb buys ALL outcomes at once = risk-free, NOT directional buy-side capture.
 - Source: https://x.com/i/status/2083525491093286989, paper https://arxiv.org/pdf/2508.03474
 
+### IMPLEMENTED + VERIFIED 2026-08-16 (status: done)
+- `cli.py sumarb` — intra-market sum-to-1, report-only. Discovery via /events
+  strict single-winner title regex; rejects multi-winner ("be part of",
+  "on the ballot", "announce", "top 3") + numeric ladders. Coverage guard:
+  no catch-all → flagged risk-free=False (correct on KXNEWROLEX).
+- `cli.py comb` — combinatorial, report-only. Ladder monotonicity
+  (auto-discovered series, grouped by close_time) + winner↔margin
+  (cross-event subject match, close-time gated).
+- `risk.arb_size_cap()` + `risk.max_arb_usd` config (unset → falls back to
+  max_trade_usd; VJ sets the value — POLICY pending VJ number).
+
+### Winner/margin bug fix (durable lesson)
+- Three false-positive classes fixed in `combinatorial.py`:
+  1. Tournament vs match: "win the ATP Cincinnati" (closes days later) paired
+     with "win at least 7.5 more games" (match spread, closes hours later).
+     Fix: close-time gate (6h window, fail-closed on missing).
+  2. Digit over-filter rejected legit "Round Of 32" match titles. Removed —
+     the `win the` template already excludes ladders.
+  3. Narrow market captured as winner: "win set 2" / "win by a set score of
+     2-1" are NARROWER than match-winner. Fix: winner regex requires `win the`
+     + reject "set score/straight sets/at least/by".
+- Lesson: same subject key does NOT mean same dependency. Two markets can
+  share a subject ("Alexander Zverev") but live in different universes
+  (tournament vs match vs set). Gate on close-time + template strictness,
+  never subject alone.
+
 ## Related
 - [[rules]]
 - [[Predictor/experiment-log]]

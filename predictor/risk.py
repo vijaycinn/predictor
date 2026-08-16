@@ -209,6 +209,21 @@ def capital_available(cfg: dict, positions: list[dict]) -> float:
     return capital - used
 
 
+def arb_size_cap(cfg: dict) -> float:
+    """Separate notional cap for RISK-FREE baskets (sum-to-1, monotonicity,
+    combinatorial). Directional bets are capped at max_trade_usd ($1); a
+    risk-free basket has no directional exposure, so capping it at $1 caps a
+    6c basket profit at $0.06 — pointless. VJ sets risk.max_arb_usd to enable
+    a larger basket size. When unset (None), falls back to max_trade_usd to
+    preserve the current conservative behavior. POLICY: value is VJ's call.
+    """
+    risk = cfg.get("risk", {})
+    cap = risk.get("max_arb_usd")
+    if cap is None:
+        return risk.get("max_trade_usd", 2.0)
+    return float(cap)
+
+
 def check_risk_limits(conn, sig: dict, size_dollars: float, cfg: dict) -> tuple[bool, str]:
     """Portfolio hard limits. LIVE ONLY — paper mode is an unrestricted thesis
     lab (virtual capital, Kelly sizing only). Real trades get all the rules."""
