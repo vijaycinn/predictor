@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import time
+from pathlib import Path
 
 from . import db, executor as executor_mod, features as features_mod, ingest, learn, risk as risk_mod, signals as sig_mod
 
@@ -90,12 +91,41 @@ def _size_trade(sig: dict, cfg: dict) -> tuple[float, float]:
 
 
 def check_position_cap(conn, cfg: dict) -> tuple[bool, str]:
-    """Max concurrent open positions (both modes). VJ: default 5, adjustable."""
+    """Max concurrent open positions (both modes). VJ-controlled:
+    runtime override (data/runtime.json max_open_positions) wins, else config.
+    Set via: python3 cli.py max-open <N>"""
     cap = cfg.get("risk", {}).get("max_open_positions", 5)
+    rt = runtime_settings(cfg)
+    if rt.get("max_open_positions") is not None:
+        cap = rt["max_open_positions"]
     open_count = len(db.open_positions(conn))
     if open_count >= cap:
         return False, f"max_open_positions reached ({open_count}/{cap})"
     return True, ""
+
+
+def runtime_settings(cfg: dict) -> dict:
+    """Persistent runtime overrides from data/runtime.json (survives restarts,
+    gitignored — machine-local). VJ explicit control via cli.py max-open."""
+    path = _runtime_path(cfg)
+    try:
+        return json.loads(Path(path).read_text())
+    except Exception:
+        return {}
+
+
+def set_runtime_setting(cfg: dict, key: str, value) -> dict:
+    path = _runtime_path(cfg)
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
+    data = runtime_settings(cfg)
+    data[key] = value
+    Path(path).write_text(json.dumps(data, indent=2))
+    return data
+
+
+def _runtime_path(cfg: dict) -> Path:
+    # next to config: <repo>/data/runtime.json (data/ is gitignored)
+    return Path(cfg.get("_config_path", ".")).parent / "data" / "runtime.json"
 
 
 def run_scan(conn, cfg: dict, llm_overrides: dict | None = None, verbose: bool = False) -> dict:

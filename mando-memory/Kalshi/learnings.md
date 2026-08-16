@@ -55,6 +55,13 @@ Wins, losses, edge cases, recurring blind spots. One entry per lesson, newest fi
 - DeItaone feed hardened: retry + real error surfacing; live test OK (xurl auth was never broken).
 - RULES.md rule 6: NO PRE-RESOLUTION EXIT codified (ZAR lesson) — only 91c+ TP (rule 6b) or explicit VJ direction.
 
+## 2026-08-16 VJ explicit position control
+- `python3 cli.py max-open <N>` — VJ sets cap, persists in `data/runtime.json` (gitignored, survives restarts).
+- `check_position_cap` enforces: blocks new entries when open >= cap (verified: cap 3 blocks 4/3, cap 8 allows).
+- `cli.py status` + `max-open` show `open X / cap Y` with runtime-override marker.
+- predictor-scan cron reads cap dynamically — never hardcodes (was "16").
+- RULES.md rule 6 documents the mechanism. Config fallback stays 16.
+
 ## Related
 - [[rules]]
 - [[Predictor/experiment-log]]

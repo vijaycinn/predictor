@@ -98,4 +98,5 @@ def load_config(path: str | Path | None = None) -> dict:
         if p.exists():
             user = yaml.safe_load(p.read_text()) or {}
             cfg = _deep_merge(cfg, user)
+        cfg["_config_path"] = str(p.resolve())
     return cfg

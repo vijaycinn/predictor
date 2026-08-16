@@ -39,8 +39,12 @@ def cmd_scan(args):
 
 def cmd_status(args):
     conn = db.connect(args.db)
+    cfg = load_config(args.config)
+    from predictor.scanner import runtime_settings
     positions = db.open_positions(conn)
-    print(f"Open positions: {len(positions)}")
+    rt = runtime_settings(cfg)
+    cap = rt.get("max_open_positions") or cfg.get("risk", {}).get("max_open_positions", 5)
+    print(f"Open positions: {len(positions)} / cap {cap}" + (" (runtime override)" if rt.get("max_open_positions") is not None else ""))
     total_cost = 0.0
     for p in positions:
         px = p["fill_price"] or p["limit_price"] or 0
@@ -49,6 +53,31 @@ def cmd_status(args):
     print(f"Capital deployed: ${total_cost:.2f}")
     perf = learn.performance_summary(conn)
     print("Performance:", json.dumps(perf, indent=2))
+
+
+def cmd_max_open(args):
+    conn = db.connect(args.db)
+    cfg = load_config(args.config)
+    from predictor.scanner import runtime_settings, set_runtime_setting
+    if args.value is None:
+        rt = runtime_settings(cfg)
+        eff = rt.get("max_open_positions") or cfg.get("risk", {}).get("max_open_positions", 5)
+        cur = len(db.open_positions(conn))
+        print(f"max_open_positions: {eff} (open now: {cur})")
+        if rt.get("max_open_positions") is not None:
+            print(f"  runtime override active: {rt['max_open_positions']} (data/runtime.json)")
+        else:
+            print(f"  config default: {cfg.get('risk', {}).get('max_open_positions', 5)} (data/runtime.json not set)")
+        return
+    v = int(args.value)
+    if v < 1:
+        print("max-open must be >= 1")
+        return
+    rt = set_runtime_setting(cfg, "max_open_positions", v)
+    cur = len(db.open_positions(conn))
+    print(f"max_open_positions set: {rt['max_open_positions']} (open now: {cur})")
+    if cur >= v:
+        print(f"  WARNING: {cur} open >= cap {v} — no new entries until positions close.")
 
 
 def cmd_proposals(args):
@@ -272,6 +301,10 @@ def main():
 
     p_status = sub.add_parser("status", help="positions + performance")
     p_status.set_defaults(func=cmd_status)
+
+    p_mo = sub.add_parser("max-open", help="show/set max open positions (VJ explicit control; persists in data/runtime.json)")
+    p_mo.add_argument("value", nargs="?", type=int, help="new cap (omit to show current)")
+    p_mo.set_defaults(func=cmd_max_open)
 
     p_prop = sub.add_parser("proposals", help="list pending trade proposals awaiting approval")
     p_prop.set_defaults(func=cmd_proposals)

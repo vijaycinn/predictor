@@ -80,6 +80,12 @@ the process is luck, not skill — both get analyzed.
    would expire 1.5h before the 21:00Z call; VJ set 8h to survive to start.
 6. **$1/trade cap.** `risk.max_trade_usd: 1.0`. No margin ever (code asserts).
    Position cap per config. No stop-loss — ride to resolution.
+   **MAX OPEN POSITIONS = VJ EXPLICIT CONTROL (2026-08-16).** Cap lives in
+   `data/runtime.json` (`max_open_positions`), set via `python3 cli.py
+   max-open <N>` — VJ's number, machine-local, survives restarts, gitignored.
+   `check_position_cap` blocks new entries when open >= cap (both modes).
+   Never hardcode a cap in prompts/scripts — read it (`cli.py max-open`).
+   Current config fallback: `risk.max_open_positions` (16).
    **NO PRE-RESOLUTION EXIT (VJ 2026-08-16, ZAR lesson, HARD).** Never exit
    an open position before resolution unless (a) take-profit ≥91c (rule 6b)
    or (b) explicit VJ direction. ZAR buy 1@0.59 exited @0.58 → resolved YES
