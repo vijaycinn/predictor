@@ -48,6 +48,13 @@ Wins, losses, edge cases, recurring blind spots. One entry per lesson, newest fi
 - Both-gates-blocked = SKIP: Hayes 1+ hit — actual (.145) says NO, xBA (.248) says YES; YES blocked by 40c band, NO by min_win_prob 0.50. Correct = SKIP.
 - Source: [[LTM/extracted/2026-08-16-stale-snippet-override-trap]]
 
+## 2026-08-16 fix batch (dream-flagged → VJ approved → DONE)
+- weekly_review.py blind fixed: resolution now reads `status in (settled,finalized)` + `result` field, not `closed`/`outcome_prices` (those were live bid). Verified PASS.
+- predictor-scan cron prompt aligned to config: max 16 open (was 2), min_edge 3c (was 2c). Config = source of truth.
+- x-bookmarks-biweekly fixed: canonical `fetch_bookmarks.py` copied to `~/.hermes/scripts/`; no-fetch dry run OK (97 tweets).
+- DeItaone feed hardened: retry + real error surfacing; live test OK (xurl auth was never broken).
+- RULES.md rule 6: NO PRE-RESOLUTION EXIT codified (ZAR lesson) — only 91c+ TP (rule 6b) or explicit VJ direction.
+
 ## Related
 - [[rules]]
 - [[Predictor/experiment-log]]
