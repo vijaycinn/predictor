@@ -31,6 +31,11 @@ Map of content. Every vault note linked below. Add new notes here when created.
 - [[LTM/profile]] — VJ durable profile
 - [[LTM/memory-policy]] — pointer-vs-depth model, dream sync
 - LTM/extracted/ — dream-skill output (dated notes)
+  - [[LTM/extracted/2026-08-16-zar-exit-lesson]]
+  - [[LTM/extracted/2026-08-16-weekly-review-tooling-bugs]]
+  - [[LTM/extracted/2026-08-16-proposal-engine-quirks]]
+  - [[LTM/extracted/2026-08-16-stale-snippet-override-trap]]
+  - [[LTM/extracted/2026-08-16-cron-config-drift]]
 
 ## REF
 - [[REF/sources]] — verified sources w/ confidence

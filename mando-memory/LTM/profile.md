@@ -29,6 +29,7 @@ last_updated: 2026-08-16
 - Direct, actionable instructions; minimal fluff.
 - Free/cheap models preferred; paid only with clear ROI.
 - Values reusable configs/patterns easy to maintain.
+- Trades HIMSELF on the Kalshi mobile app (won Ribero 2@0.40 +$1.20 while agent said SKIP). Always check `/portfolio/fills` + positions for HIS fills, not just agent-placed orders. (2026-08-02, dream 2026-08-16)
 
 ## Related
 - [[memory-policy]]
