@@ -12,8 +12,16 @@ def check_resolutions(conn) -> list[dict]:
     """Poll gamma for closed markets we track; record outcomes and P&L."""
     from .ingest import GAMMA, get_json
 
+    # Only poll markets we actually hold/track (trades + live proposals), NOT all
+    # ingested markets. Full-table poll = 2000+ serial Gamma calls = 30-60min hang
+    # (hit 2026-08-16). P&L only exists where we have exposure.
     rows = conn.execute(
-        "SELECT condition_id FROM markets WHERE closed=0 AND condition_id IS NOT NULL"
+        """SELECT DISTINCT m.condition_id FROM markets m
+           WHERE m.closed=0 AND m.condition_id IS NOT NULL
+             AND m.condition_id IN (
+                 SELECT condition_id FROM trades
+                 UNION SELECT condition_id FROM proposals
+             )"""
     ).fetchall()
     resolved = []
     for r in rows:
